@@ -11,7 +11,7 @@ def _extract_emails(text: str, domain: str) -> set:
     """Extract email addresses from text, filtering by domain."""
     pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
     all_emails = set(re.findall(pattern, text.lower()))
-        domain_emails = {email for email in all_emails if domain.lower() in email}
+    domain_emails = {email for email in all_emails if domain.lower() in email}
     return domain_emails
 
 
