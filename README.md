@@ -8,7 +8,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge)](CONTRIBUTING.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey?style=for-the-badge)](#)
 
-A powerful, modular OSINT reconnaissance tool designed specifically for ethical hackers, bug bounty hunters, and security researchers.  
+A powerful, modular OSINT reconnaissance tool designed specifically for bug bounty hunters, and security researchers.  
 Powered by **real free APIs** — AlienVault OTX, URLScan.io, Internet Archive, ThreatFox, Shodan, SecurityTrails and more. 🔍
 
 ---
