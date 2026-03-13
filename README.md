@@ -1,7 +1,7 @@
 <div align="center">
 
 # 🌑 Twilight Orbit
-### Automated OSINT Recon Tool: See What's Hidden in the Shadows
+### Automated OSINT Recon Tool | See What's Hidden in the Shadows
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
