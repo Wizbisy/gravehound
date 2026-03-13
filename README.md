@@ -58,6 +58,9 @@ Twilight Orbit runs 12 parallel modules to extract every drop of public intellig
 | 🌍 **Geolocation** | Finds the physical location, ISP, and ASN for the target IP address. | `ip-api.com` |
 | 📧 **Email Harvest** | Discovers employee and corporate emails via web scraping and public databases. | Custom scraper, Hunter.io API |
 | 🕰️ **Wayback Machine** | Searches the Internet Archive for historical snapshots and hidden paths. | `archive.org` CDX API |
+| 🗝️ **Wayback Secrets** | Scans historical `.env`, `.json`, and `.sql` file archives for leaked API keys (AWS, Google, Stripe). | `archive.org` CDX API |
+| 🎭 **DOM Fingerprint** | Bypasses WAFs via Headless Chromium to detect hidden JavaScript frontend frameworks. | `playwright` |
+| 🔗 **Dependency Analyzer**| Parses client-side scripts to identify outdated libraries with known CVEs (e.g. ancient jQuery). | `httpx`, regex |
 | 🚨 **Threat Intel** | Cross-references the domain against global threat intelligence feeds. | AlienVault OTX, URLScan.io, ThreatFox, HackerTarget |
 | 🔎 **Shodan / VT** | Queries the biggest cybersecurity databases for vulnerabilities and malware reputation. | Shodan, VirusTotal, AbuseIPDB |
 
@@ -191,6 +194,9 @@ twilight-orbit/
 │   │   ├── geo_lookup.py    # IP geolocation
 │   │   ├── email_harvest.py # Email discovery (Scraping & Hunter.io)
 │   │   ├── wayback.py       # Wayback Machine API
+│   │   ├── wayback_secrets.py # Historical API Key detection
+│   │   ├── dom_fingerprint.py # Headless browser framework detection
+│   │   ├── dependency_chain.py# Frontend vulnerable libs check
 │   │   ├── threat_intel.py  # AlienVault OTX, URLScan, ThreatFox
 │   │   └── shodan_vt.py     # Shodan, VirusTotal, AbuseIPDB
 │   └── reporting/

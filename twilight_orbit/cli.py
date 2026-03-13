@@ -36,8 +36,12 @@ def scan(target: str, modules: str | None, output: str | None, json_output: bool
         json_export(scan_results, json_file)
         console.print(f'\n  [green]✓ JSON report saved to:[/green] [bold]{json_file}[/bold]')
     if output:
-        html_export(scan_results, output)
-        console.print(f'\n  [green]✓ HTML report saved to:[/green] [bold]{output}[/bold]')
+        if output.lower().endswith('.json'):
+            json_export(scan_results, output)
+            console.print(f'\n  [green]✓ JSON report saved to:[/green] [bold]{output}[/bold]')
+        else:
+            html_export(scan_results, output)
+            console.print(f'\n  [green]✓ HTML report saved to:[/green] [bold]{output}[/bold]')
     console.print()
 
 @cli.command(name='modules')

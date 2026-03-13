@@ -18,3 +18,4 @@ venv/
 *.swp
 *.swo
 reports/
+ghost_assets.py
