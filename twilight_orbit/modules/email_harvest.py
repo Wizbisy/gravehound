@@ -1,104 +1,120 @@
-"""Email Harvesting Module: Discover email addresses associated with a domain."""
-
 import re
 import os
 import httpx
-
 from twilight_orbit.config import DEFAULT_TIMEOUT, HUNTER_API_URL
 
+_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
 
-def _extract_emails(text: str, domain: str) -> set:
-    """Extract email addresses from text, filtering by domain."""
-    pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-    all_emails = set(re.findall(pattern, text.lower()))
-    domain_emails = {email for email in all_emails if domain.lower() in email}
-    return domain_emails
+_EMAIL_RE = re.compile(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}')
+
+_SCRAPE_PATHS = [
+    '', '/contact', '/about', '/about-us', '/contact-us', '/team', '/people',
+    '/privacy', '/privacy-policy', '/security', '/security.txt', '/.well-known/security.txt',
+    '/humans.txt', '/sitemap.xml',
+]
+
+_COMMON_PREFIXES = [
+    'info', 'admin', 'contact', 'support', 'hello', 'sales', 'webmaster',
+    'security', 'abuse', 'noreply', 'noc', 'postmaster', 'billing',
+    'help', 'careers', 'jobs', 'press', 'media', 'legal', 'privacy',
+]
+
+_DISPOSABLE_DOMAINS = {'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwaway.email'}
 
 
-def _search_website(target: str) -> set:
-    """Scrape the target website for email addresses."""
-    emails = set()
-    pages = [
-        f"https://{target}",
-        f"https://{target}/contact",
-        f"https://{target}/about",
-        f"https://{target}/about-us",
-        f"https://{target}/contact-us",
-        f"https://{target}/team",
-        f"https://{target}/privacy",
-        f"https://{target}/privacy-policy",
-        f"http://{target}",
-    ]
+def _extract_emails(text: str, domain: str) -> set[str]:
+    all_emails = set(_EMAIL_RE.findall(text.lower()))
+    return {e for e in all_emails if domain.lower() in e and len(e) <= 254}
 
+
+def _classify_email(email: str) -> str:
+    local = email.split('@')[0].lower()
+    domain = email.split('@')[1].lower() if '@' in email else ''
+    if domain in _DISPOSABLE_DOMAINS:
+        return 'disposable'
+    if local in ('security', 'abuse', 'noc', 'postmaster'):
+        return 'operational'
+    if local in ('admin', 'webmaster', 'root'):
+        return 'administrative'
+    if local in ('sales', 'billing', 'support', 'hello', 'info', 'contact'):
+        return 'business'
+    if local in ('noreply', 'no-reply', 'donotreply'):
+        return 'automated'
+    return 'personal_or_role'
+
+
+def _scrape_website(target: str) -> set[str]:
+    found: set[str] = set()
     with httpx.Client(
         timeout=DEFAULT_TIMEOUT,
         follow_redirects=True,
         verify=False,
-        headers={"User-Agent": "Mozilla/5.0 (compatible; TwilightOrbit/1.0)"},
+        headers={'User-Agent': _UA},
     ) as client:
-        for url in pages:
-            try:
-                response = client.get(url)
-                if response.status_code == 200:
-                    found = _extract_emails(response.text, target)
-                    emails.update(found)
-            except Exception:
-                continue
-
-    return emails
+        for path in _SCRAPE_PATHS:
+            for proto in ('https', 'http'):
+                try:
+                    url = f'{proto}://{target}{path}'
+                    resp = client.get(url)
+                    if resp.status_code == 200:
+                        found.update(_extract_emails(resp.text, target))
+                        break
+                except Exception:
+                    continue
+    return found
 
 
 def run(target: str) -> dict:
-    """
-    Discover email addresses associated with the target domain.
-    
-    Returns:
-        dict with discovered email addresses and their sources
-    """
     results = {
-        "module": "Email Harvesting",
-        "target": target,
-        "emails": [],
-        "total": 0,
-        "errors": [],
+        'module': 'Email Harvesting',
+        'target': target,
+        'emails': [],
+        'classified': {},
+        'common_patterns': [f'{p}@{target}' for p in _COMMON_PREFIXES],
+        'total': 0,
+        'sources': {'website': [], 'hunter': []},
+        'errors': [],
     }
 
-    discovered = set()
+    discovered: set[str] = set()
 
     try:
-        web_emails = _search_website(target)
+        web_emails = _scrape_website(target)
         discovered.update(web_emails)
+        results['sources']['website'] = sorted(web_emails)
     except Exception as e:
-        results["errors"].append(f"Website scraping error: {str(e)}")
+        results['errors'].append(f'Website scraping error: {type(e).__name__}: {str(e)}')
 
-    common_patterns = [
-        f"info@{target}",
-        f"admin@{target}",
-        f"contact@{target}",
-        f"support@{target}",
-        f"hello@{target}",
-        f"sales@{target}",
-        f"webmaster@{target}",
-    ]
-
-    hunter_key = os.getenv("HUNTER_API_KEY")
+    hunter_key = os.getenv('HUNTER_API_KEY')
     if hunter_key:
         try:
-            url = HUNTER_API_URL.replace("{target}", target).replace("{api_key}", hunter_key)
-            with httpx.Client(timeout=10, verify=False) as client:
+            url = HUNTER_API_URL.replace('{target}', target).replace('{api_key}', hunter_key)
+            with httpx.Client(timeout=10, verify=False, headers={'User-Agent': _UA}) as client:
                 res = client.get(url)
                 if res.status_code == 200:
                     data = res.json()
-                    emails = data.get("data", {}).get("emails", [])
-                    for e in emails:
-                        discovered.add(e.get("value"))
+                    hunter_emails = [
+                        e.get('value', '') for e in data.get('data', {}).get('emails', [])
+                        if e.get('value')
+                    ]
+                    discovered.update(hunter_emails)
+                    results['sources']['hunter'] = sorted(hunter_emails)
                 elif res.status_code == 401:
-                    results["errors"].append("Hunter.io API Key is invalid")
+                    results['errors'].append('Hunter.io API key is invalid')
+                elif res.status_code == 429:
+                    results['errors'].append('Hunter.io rate limit exceeded')
+                else:
+                    results['errors'].append(f'Hunter.io returned HTTP {res.status_code}')
         except Exception as e:
-            results["errors"].append(f"Hunter.io API error: {str(e)}")
+            results['errors'].append(f'Hunter.io error: {type(e).__name__}: {str(e)}')
 
-    results["common_patterns"] = common_patterns
-    results["emails"] = sorted(list(discovered))
-    results["total"] = len(discovered)
+    classified: dict[str, list[str]] = {}
+    for email in sorted(discovered):
+        cat = _classify_email(email)
+        classified.setdefault(cat, []).append(email)
+
+    results['emails'] = sorted(discovered)
+    results['classified'] = classified
+    results['total'] = len(discovered)
 
     return results
