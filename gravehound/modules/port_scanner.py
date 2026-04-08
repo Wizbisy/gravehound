@@ -2,15 +2,13 @@ import socket
 import select
 import struct
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from twilight_orbit.config import TOP_PORTS, PORT_SERVICES, DEFAULT_PORT_TIMEOUT, DEFAULT_THREADS
+from gravehound.config import TOP_PORTS, PORT_SERVICES, DEFAULT_PORT_TIMEOUT, DEFAULT_THREADS
 
 _RISKY_PORTS = {21, 23, 69, 135, 139, 445, 512, 513, 514, 3389, 5900, 6379, 9200, 11211, 27017}
 _PLAINTEXT_PROTOCOLS = {21: 'FTP', 23: 'Telnet', 69: 'TFTP', 80: 'HTTP',
                         110: 'POP3', 143: 'IMAP', 514: 'Syslog'}
-
 _HTTP_PROBE = b'HEAD / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n'
 _GENERIC_PROBE = b'\r\n'
-
 
 def _grab_banner(target_ip: str, port: int, timeout: float, hostname: str = '') -> str:
     try:
@@ -30,7 +28,6 @@ def _grab_banner(target_ip: str, port: int, timeout: float, hostname: str = '') 
     except Exception:
         pass
     return ''
-
 
 def _scan_port(target_ip: str, port: int, timeout: float, hostname: str) -> dict | None:
     try:
@@ -56,7 +53,6 @@ def _scan_port(target_ip: str, port: int, timeout: float, hostname: str) -> dict
         pass
     return None
 
-
 def run(target: str, ports: list[int] | None = None, threads: int = DEFAULT_THREADS) -> dict:
     results = {
         'module': 'Port Scanner',
@@ -68,17 +64,14 @@ def run(target: str, ports: list[int] | None = None, threads: int = DEFAULT_THRE
         'findings': [],
         'errors': [],
     }
-
     scan_ports = ports or TOP_PORTS
     results['scanned_count'] = len(scan_ports)
-
     try:
         target_ip = socket.gethostbyname(target)
         results['ip'] = target_ip
     except socket.gaierror as e:
         results['errors'].append(f'Could not resolve {target}: {str(e)}')
         return results
-
     try:
         with ThreadPoolExecutor(max_workers=threads) as executor:
             futures = {
@@ -96,13 +89,10 @@ def run(target: str, ports: list[int] | None = None, threads: int = DEFAULT_THRE
                     results['errors'].append(f'Port scan future error: {str(e)}')
     except Exception as e:
         results['errors'].append(f'Thread pool error: {str(e)}')
-
     results['open_ports'].sort(key=lambda x: x['port'])
-
     for entry in results['open_ports']:
         for flag in entry.get('risk_flags', []):
             results['findings'].append(f'Port {entry["port"]} ({entry["service"]}): {flag}')
-
     if 3389 in {p['port'] for p in results['open_ports']}:
         results['findings'].append('RDP (3389) exposed — high risk for brute-force and BlueKeep-class vulns')
     if 6379 in {p['port'] for p in results['open_ports']}:
@@ -111,5 +101,4 @@ def run(target: str, ports: list[int] | None = None, threads: int = DEFAULT_THRE
         results['findings'].append('Elasticsearch (9200) exposed — verify authentication is enabled')
     if 27017 in {p['port'] for p in results['open_ports']}:
         results['findings'].append('MongoDB (27017) exposed — verify authentication is enabled')
-
     return results

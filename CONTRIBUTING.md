@@ -1,6 +1,6 @@
-# Contributing to Twilight Orbit 🌑
+# Contributing to Gravehound 🐾
 
-First off, thank you for considering contributing to Twilight Orbit! Every contribution helps make this tool better for the security community.
+First off, thank you for considering contributing to Gravehound! Every contribution helps make this tool better for the security community.
 
 ## 🚀 How to Contribute
 
@@ -26,11 +26,12 @@ First off, thank you for considering contributing to Twilight Orbit! Every contr
 
 ## 📦 Adding a New Module
 
-Twilight Orbit is designed to be modular. To add a new recon module:
+Gravehound is designed to be modular. To add a new recon module:
 
-1. Create a new file in `twilight_orbit/modules/your_module.py`
+1. Create a new file in `gravehound/modules/your_module.py`
 2. Implement a `run(target: str) -> dict` function
 3. Return results in the standard format:
+
    ```python
    {
        "module": "Your Module Name",
@@ -39,15 +40,16 @@ Twilight Orbit is designed to be modular. To add a new recon module:
        "errors": [],
    }
    ```
-4. Register it in `twilight_orbit/scanner.py` in the `MODULES` dict
-5. Add a printer function in `twilight_orbit/reporting/console.py`
-6. Add a renderer in `twilight_orbit/reporting/html_report.py`
+
+4. Register it in `gravehound/scanner.py` in the `MODULES` dict
+5. Add a printer function in `gravehound/reporting/console.py`
+6. Add a renderer in `gravehound/reporting/html_report.py`
 
 ## ⚖️ Code of Conduct
 
 - Be respectful and constructive
 - This tool is for **authorized security testing only**
-- Never use Twilight Orbit against targets without permission
+- Never use Gravehound against targets without permission
 - Follow responsible disclosure practices
 
 ## 📝 License

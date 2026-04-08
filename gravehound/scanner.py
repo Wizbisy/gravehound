@@ -1,9 +1,10 @@
 import time
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
-from twilight_orbit.modules import dns_lookup, whois_lookup, subdomains, port_scanner, http_headers, ssl_info, tech_detect, geo_lookup, email_harvest, wayback, threat_intel, shodan_vt, wayback_secrets, dom_fingerprint, dependency_chain, ghost_assets
+from gravehound.modules import dns_lookup, whois_lookup, subdomains, port_scanner, http_headers, ssl_info, tech_detect, geo_lookup, email_harvest, wayback, threat_intel, shodan_vt, wayback_secrets, dom_fingerprint, dependency_chain, ghost_assets
 
 console = Console()
+
 MODULES = {
     'dns':              {'name': 'DNS Lookup',             'description': 'Query DNS records (A, MX, NS, TXT, etc.)',                     'function': dns_lookup.run},
     'whois':            {'name': 'WHOIS Lookup',           'description': 'Domain registration information',                              'function': whois_lookup.run},
@@ -21,8 +22,8 @@ MODULES = {
     'threat':           {'name': 'Threat Intelligence',    'description': 'AlienVault OTX, URLScan.io, ThreatFox, HackerTarget APIs',    'function': threat_intel.run},
     'shodan':           {'name': 'Shodan / VT / AbuseIPDB','description': 'Premium APIs (free keys via env vars)',                       'function': shodan_vt.run},
     'ghost_assets':     {'name': 'Ghost Assets',           'description': 'Subdomain takeover scanner (31 providers)',                   'function': ghost_assets.run},
-}
 
+}
 DEFAULT_MODULES = [
     'dns', 'whois', 'geo', 'ports', 'headers', 'ssl', 'tech',
     'subdomains', 'emails', 'wayback', 'wayback_secrets',
@@ -61,11 +62,9 @@ def run_scan(target: str, modules: list[str] | None=None) -> dict:
             except Exception as e:
                 import socket
                 import httpx
-                
                 err_msg = str(e)
                 if isinstance(e, socket.gaierror) or "getaddrinfo failed" in str(e):
                     err_msg = f"Failed to resolve hostname '{target}'. Ensure the target is a valid domain (e.g. example.com, not example,com)."
-                    
                 scan_results['results'][mod_key] = {'module': mod_info['name'], 'target': target, 'errors': [f'Module crashed: {err_msg}']}
                 scan_results['failed_modules'] += 1
             progress.advance(task)

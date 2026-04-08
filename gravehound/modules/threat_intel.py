@@ -1,13 +1,12 @@
 import socket
 import httpx
-from twilight_orbit.config import (
+from gravehound.config import (
     OTX_DOMAIN_URL, OTX_IP_URL, THREATFOX_API_URL,
     HACKERTARGET_REVERSE_DNS, HACKERTARGET_PAGE_LINKS,
     URLSCAN_SEARCH_URL, DEFAULT_TIMEOUT,
 )
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
-
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 
 def _safe_get(client: httpx.Client, url: str) -> httpx.Response | None:
     try:
@@ -19,13 +18,11 @@ def _safe_get(client: httpx.Client, url: str) -> httpx.Response | None:
     except Exception:
         return None
 
-
 def _safe_post(client: httpx.Client, url: str, **kwargs) -> httpx.Response | None:
     try:
         return client.post(url, **kwargs)
     except Exception:
         return None
-
 
 def _query_otx(target: str, client: httpx.Client) -> dict:
     out = {'pulses': 0, 'reputation': None, 'tags': [], 'references': [], 'malware_families': []}
@@ -53,7 +50,6 @@ def _query_otx(target: str, client: httpx.Client) -> dict:
         pass
     return out
 
-
 def _query_urlscan(target: str, client: httpx.Client) -> list:
     scans = []
     try:
@@ -79,7 +75,6 @@ def _query_urlscan(target: str, client: httpx.Client) -> list:
     except Exception:
         pass
     return scans
-
 
 def _query_threatfox(target: str, client: httpx.Client) -> dict:
     out = {'iocs': [], 'is_malicious': False, 'threat_types': set()}
@@ -110,7 +105,6 @@ def _query_threatfox(target: str, client: httpx.Client) -> dict:
         pass
     return out
 
-
 def _query_reverse_dns(ip: str, client: httpx.Client) -> list[str]:
     domains: list[str] = []
     try:
@@ -127,7 +121,6 @@ def _query_reverse_dns(ip: str, client: httpx.Client) -> list[str]:
     except Exception:
         pass
     return domains[:30]
-
 
 def _query_page_links(target: str, client: httpx.Client) -> dict:
     internal: list[str] = []
@@ -149,7 +142,6 @@ def _query_page_links(target: str, client: httpx.Client) -> dict:
         pass
     return {'internal': internal[:20], 'external': external[:20]}
 
-
 def run(target: str) -> dict:
     results = {
         'module': 'Threat Intelligence',
@@ -164,40 +156,33 @@ def run(target: str) -> dict:
         'findings': [],
         'errors': [],
     }
-
     ip = None
     try:
         ip = socket.gethostbyname(target)
     except Exception:
         results['errors'].append(f'Could not resolve {target} to IP')
-
     with httpx.Client(timeout=DEFAULT_TIMEOUT, headers={'User-Agent': _UA}) as client:
         try:
             results['otx'] = _query_otx(target, client)
         except Exception as e:
             results['errors'].append(f'OTX error: {str(e)}')
-
         try:
             results['urlscan'] = _query_urlscan(target, client)
         except Exception as e:
             results['errors'].append(f'URLScan error: {str(e)}')
-
         try:
             results['threatfox'] = _query_threatfox(target, client)
         except Exception as e:
             results['errors'].append(f'ThreatFox error: {str(e)}')
-
         if ip:
             try:
                 results['reverse_dns'] = _query_reverse_dns(ip, client)
             except Exception as e:
                 results['errors'].append(f'Reverse DNS error: {str(e)}')
-
         try:
             results['page_links'] = _query_page_links(target, client)
         except Exception as e:
             results['errors'].append(f'Page links error: {str(e)}')
-
     risk_score = 0
     if results['threatfox'].get('is_malicious'):
         risk_score += 5
@@ -205,7 +190,6 @@ def run(target: str) -> dict:
         results['findings'].append(
             f'ThreatFox: listed as malicious — threat types: {", ".join(threat_types) or "unknown"}'
         )
-
     otx_pulses = results['otx'].get('pulses', 0)
     otx_malware = results['otx'].get('malware_families', [])
     if otx_pulses > 10:
@@ -214,17 +198,14 @@ def run(target: str) -> dict:
     elif otx_pulses > 0:
         risk_score += 1
         results['findings'].append(f'OTX: {otx_pulses} threat pulse(s)')
-
     if otx_malware:
         risk_score += 2
         results['findings'].append(f'Associated malware families: {", ".join(otx_malware)}')
-
     if ip and results['reverse_dns']:
         n = len(results['reverse_dns'])
         if n > 50:
             risk_score += 1
             results['findings'].append(f'{n} reverse-DNS neighbours — may be shared hosting or botnet infra')
-
     results['risk_score'] = risk_score
     if risk_score >= 5:
         results['risk_level'] = 'HIGH'
@@ -234,5 +215,4 @@ def run(target: str) -> dict:
         results['risk_level'] = 'LOW'
     else:
         results['risk_level'] = 'CLEAN'
-
     return results

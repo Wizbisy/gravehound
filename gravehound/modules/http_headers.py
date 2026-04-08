@@ -1,16 +1,13 @@
 import httpx
-from twilight_orbit.config import SECURITY_HEADERS, DEFAULT_TIMEOUT
+from gravehound.config import SECURITY_HEADERS, DEFAULT_TIMEOUT
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
-
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 _INFO_LEAKING_HEADERS = [
     'x-powered-by', 'x-aspnet-version', 'x-aspnetmvc-version',
     'x-generator', 'x-drupal-cache', 'server', 'x-runtime',
     'x-version', 'x-app-version', 'x-build', 'x-fw-version',
 ]
-
 _CSP_UNSAFE = ['unsafe-inline', 'unsafe-eval', 'unsafe-hashes', "'unsafe-inline'", "'unsafe-eval'"]
-
 
 def _grade(score: int, max_score: int) -> str:
     ratio = score / max_score if max_score else 0
@@ -23,7 +20,6 @@ def _grade(score: int, max_score: int) -> str:
     if ratio >= 0.25:
         return 'D'
     return 'F'
-
 
 def _analyse_csp(value: str) -> list[str]:
     findings = []
@@ -38,7 +34,6 @@ def _analyse_csp(value: str) -> list[str]:
     if 'default-src' not in lower and 'script-src' not in lower:
         findings.append("CSP missing default-src or script-src directive")
     return findings
-
 
 def _analyse_hsts(value: str) -> list[str]:
     findings = []
@@ -56,7 +51,6 @@ def _analyse_hsts(value: str) -> list[str]:
         findings.append('HSTS missing preload directive')
     return findings
 
-
 def run(target: str) -> dict:
     results = {
         'module': 'HTTP Headers',
@@ -73,10 +67,8 @@ def run(target: str) -> dict:
         'findings': [],
         'errors': [],
     }
-
     headers = {'User-Agent': _UA}
     urls = [f'https://{target}', f'http://{target}']
-
     for url in urls:
         try:
             with httpx.Client(
@@ -90,14 +82,12 @@ def run(target: str) -> dict:
                 results['status_code'] = response.status_code
                 results['headers'] = dict(response.headers)
                 results['server'] = response.headers.get('server', 'Not disclosed')
-
                 present_count = 0
                 for header_name, info in SECURITY_HEADERS.items():
                     header_value = response.headers.get(header_name.lower())
                     is_present = header_value is not None
                     if is_present:
                         present_count += 1
-
                     entry = {
                         'header': header_name,
                         'present': is_present,
@@ -106,19 +96,15 @@ def run(target: str) -> dict:
                         'severity': info['severity'],
                         'sub_findings': [],
                     }
-
                     if is_present and header_name == 'Content-Security-Policy':
                         entry['sub_findings'] = _analyse_csp(header_value)
                     elif is_present and header_name == 'Strict-Transport-Security':
                         entry['sub_findings'] = _analyse_hsts(header_value)
                     elif not is_present and info['severity'] == 'HIGH':
                         results['findings'].append(f'Missing {header_name} ({info["severity"]} severity)')
-
                     results['security_analysis'].append(entry)
-
                 results['score'] = present_count
                 results['grade'] = _grade(present_count, len(SECURITY_HEADERS))
-
                 for key in _INFO_LEAKING_HEADERS:
                     val = response.headers.get(key)
                     if val:
@@ -128,7 +114,6 @@ def run(target: str) -> dict:
                             results['findings'].append(
                                 f'Technology disclosure via {key}: {val}'
                             )
-
                 if response.history:
                     first = response.history[0]
                     if str(first.url).startswith('http://') and str(response.url).startswith('https://'):
@@ -136,7 +121,6 @@ def run(target: str) -> dict:
                     hops = len(response.history)
                     if hops > 3:
                         results['findings'].append(f'Excessive redirects ({hops} hops) — may indicate misconfiguration')
-
                 cookie_header = response.headers.get('set-cookie', '')
                 if cookie_header:
                     lower_ck = cookie_header.lower()
@@ -146,9 +130,7 @@ def run(target: str) -> dict:
                         results['findings'].append('Set-Cookie missing HttpOnly flag')
                     if 'samesite' not in lower_ck:
                         results['findings'].append('Set-Cookie missing SameSite attribute')
-
                 return results
-
         except httpx.ConnectError:
             continue
         except httpx.TimeoutException:
@@ -157,8 +139,6 @@ def run(target: str) -> dict:
         except Exception as e:
             results['errors'].append(f'Error connecting to {url}: {type(e).__name__}: {str(e)}')
             continue
-
     if not results['url']:
         results['errors'].append(f'Could not connect to {target} on HTTP or HTTPS')
-
     return results

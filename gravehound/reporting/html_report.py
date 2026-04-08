@@ -1,14 +1,11 @@
 import json
 import html as html_module
 from datetime import datetime
-from twilight_orbit.config import APP_VERSION
-
-# ── helpers ──────────────────────────────────────────────────────────────────
+from gravehound.config import APP_VERSION
 
 def _e(s) -> str:
     """HTML-escape a value."""
     return html_module.escape(str(s)) if s is not None else ''
-
 
 def _badge(text: str, colour: str) -> str:
     colours = {
@@ -26,11 +23,9 @@ def _badge(text: str, colour: str) -> str:
             f'font-size:0.78rem;font-weight:700;background:{bg};color:{fg};'
             f'letter-spacing:.4px">{_e(text)}</span>')
 
-
 def _sev_badge(severity: str) -> str:
     mapping = {'CRITICAL': 'red', 'HIGH': 'orange', 'MEDIUM': 'yellow', 'LOW': 'blue', 'INFO': 'gray'}
     return _badge(severity, mapping.get(severity.upper(), 'gray'))
-
 
 def _section(icon: str, title: str, content: str, count: str = '') -> str:
     count_html = f' <span style="font-size:.8rem;color:#6b7280;font-weight:400">({count})</span>' if count else ''
@@ -44,14 +39,12 @@ def _section(icon: str, title: str, content: str, count: str = '') -> str:
       <div class="section-body">{content}</div>
     </div>'''
 
-
 def _render_errors(data: dict) -> str:
     errors = data.get('errors', [])
     return ''.join(
         f'<div class="alert alert-warn">⚠ {_e(e)}</div>'
         for e in errors
     )
-
 
 def _render_findings(data: dict) -> str:
     findings = data.get('findings', [])
@@ -60,10 +53,8 @@ def _render_findings(data: dict) -> str:
     items = ''.join(f'<li>{_e(f)}</li>' for f in findings)
     return f'<div class="alert alert-find"><strong>🔎 Findings</strong><ul style="margin-top:.5rem;padding-left:1.2rem">{items}</ul></div>'
 
-
 def _no_data(msg: str = 'No data returned') -> str:
     return f'<p class="no-data">{_e(msg)}</p>'
-
 
 def _table(headers: list[str], rows: list[list]) -> str:
     ths = ''.join(f'<th>{_e(h)}</th>' for h in headers)
@@ -72,9 +63,6 @@ def _table(headers: list[str], rows: list[list]) -> str:
         tds = ''.join(f'<td>{c}</td>' for c in row)
         trs += f'<tr>{tds}</tr>'
     return f'<table><thead><tr>{ths}</tr></thead><tbody>{trs}</tbody></table>'
-
-
-# ── module renderers ──────────────────────────────────────────────────────────
 
 def _render_dns(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
@@ -93,7 +81,6 @@ def _render_dns(data: dict) -> str:
             rows.append([_badge(rtype, 'blue'), val_str, f'<span style="color:#6b7280">{_e(ttl)}s</span>' if ttl else ''])
     out += _table(['Type', 'Value', 'TTL'], rows)
     return out
-
 
 def _render_whois(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
@@ -114,7 +101,6 @@ def _render_whois(data: dict) -> str:
         rows.append([f'<strong>{_e(label)}</strong>', display])
     out += _table(['Field', 'Value'], rows)
     return out
-
 
 def _render_geo(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
@@ -137,7 +123,6 @@ def _render_geo(data: dict) -> str:
     out += _table(['Field', 'Value'], rows)
     return out
 
-
 def _render_ports(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
     open_ports = data.get('open_ports', [])
@@ -154,7 +139,6 @@ def _render_ports(data: dict) -> str:
         rows.append([f'<strong>{p["port"]}</strong>', _badge('open', 'green'), _e(p['service']), flag_html, banner])
     out += _table(['Port', 'State', 'Service', 'Risk', 'Banner'], rows)
     return out
-
 
 def _render_headers(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
@@ -192,7 +176,6 @@ def _render_headers(data: dict) -> str:
     out += _table(['Header', 'Status', 'Severity', 'Value'], rows)
     return out
 
-
 def _render_ssl(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
     cert = data.get('certificate', {})
@@ -227,7 +210,6 @@ def _render_ssl(data: dict) -> str:
     out += _table(['Field', 'Value'], rows)
     return out
 
-
 def _render_tech(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
     techs = data.get('technologies', [])
@@ -248,7 +230,6 @@ def _render_tech(data: dict) -> str:
             rows.append([f'<strong>{cat_label}</strong>', tags])
     out += _table(['Category', 'Technologies'], rows)
     return out
-
 
 def _render_subdomains(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
@@ -279,7 +260,6 @@ def _render_subdomains(data: dict) -> str:
         out += f'<div style="line-height:2">{tags}</div>'
     return out
 
-
 def _render_emails(data: dict) -> str:
     out = _render_errors(data)
     emails = data.get('emails', [])
@@ -298,7 +278,6 @@ def _render_emails(data: dict) -> str:
         rows = [[str(i), f'<code>{_e(e)}</code>'] for i, e in enumerate(emails, 1)]
         out += _table(['#', 'Email'], rows)
     return out
-
 
 def _render_wayback(data: dict) -> str:
     out = _render_errors(data)
@@ -324,7 +303,6 @@ def _render_wayback(data: dict) -> str:
                      f'<a href="{_e(snap.get("url",""))}" style="color:#60a5fa" target="_blank">Open ↗</a>'])
     out += _table(['Date', 'Status', 'MIME', 'Link'], rows)
     return out
-
 
 def _render_threat(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
@@ -361,7 +339,6 @@ def _render_threat(data: dict) -> str:
         out += _table(['URL', 'IP', 'Server', 'Date'], rows)
     return out
 
-
 def _render_shodan(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
     keys = data.get('api_keys_configured', [])
@@ -387,7 +364,6 @@ def _render_shodan(data: dict) -> str:
         out += '<p style="margin-bottom:.5rem">CVEs: ' + ' '.join(_badge(v, 'red') for v in list(shodan['vulns'])[:10]) + '</p>'
     return out
 
-
 def _render_wayback_secrets(data: dict) -> str:
     out = _render_errors(data)
     leaks = data.get('leaks_found', [])
@@ -408,7 +384,6 @@ def _render_wayback_secrets(data: dict) -> str:
     out += _table(['Severity', 'Pattern', 'Redacted Value', 'Archived', 'Source(s)'], rows)
     return out
 
-
 def _render_dom_fingerprint(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
     frameworks = data.get('frameworks', [])
@@ -428,7 +403,6 @@ def _render_dom_fingerprint(data: dict) -> str:
             out += _table(['Meta Field', 'Value'], rows)
     return out
 
-
 def _render_dependency_chain(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
     deps = data.get('dependencies', [])
@@ -447,7 +421,6 @@ def _render_dependency_chain(data: dict) -> str:
     )
     out += f'<div style="margin-top:.8rem;line-height:2.2">{tags}</div>'
     return out
-
 
 def _render_ghost_assets(data: dict) -> str:
     out = _render_errors(data) + _render_findings(data)
@@ -470,9 +443,6 @@ def _render_ghost_assets(data: dict) -> str:
         out += '<p class="no-data">✓ No subdomain takeover candidates found.</p>'
     return out
 
-
-# ── main export ───────────────────────────────────────────────────────────────
-
 def export(scan_results: dict, output_path: str) -> str:
     target = scan_results.get('target', 'Unknown')
     duration = scan_results.get('duration', 0)
@@ -480,8 +450,6 @@ def export(scan_results: dict, output_path: str) -> str:
     successful = scan_results.get('successful_modules', 0)
     failed = scan_results.get('failed_modules', 0)
     results = scan_results.get('results', {})
-
-    # Collect all findings for the top banner
     all_findings: list[tuple[str, str]] = []
     for mod_key, mod_data in results.items():
         if isinstance(mod_data, dict):
@@ -493,7 +461,6 @@ def export(scan_results: dict, output_path: str) -> str:
                 sev = leak.get('severity', '')
                 if sev in ('CRITICAL', 'HIGH'):
                     all_findings.append(('Wayback Secrets', f'[{sev}] {leak.get("pattern")}: {leak.get("value_redacted")}'))
-
     findings_banner = ''
     if all_findings:
         items = ''.join(f'<li><span style="color:#6b7280;font-size:.78rem">[{_e(src)}]</span> {_e(f)}</li>' for src, f in all_findings[:30])
@@ -501,7 +468,6 @@ def export(scan_results: dict, output_path: str) -> str:
           <div style="font-weight:700;font-size:1rem;margin-bottom:.6rem">🔎 {len(all_findings)} Finding(s) Across All Modules</div>
           <ul style="padding-left:1.3rem;line-height:1.9">{items}</ul>
         </div>'''
-
     css = '''
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
       *{margin:0;padding:0;box-sizing:border-box}
@@ -509,21 +475,17 @@ def export(scan_results: dict, output_path: str) -> str:
       a{color:#60a5fa;text-decoration:none}a:hover{text-decoration:underline}
       code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:#0d1117;padding:1px 5px;border-radius:4px}
       .container{max-width:1150px;margin:0 auto;padding:2rem 1.5rem}
-
       /* header */
       .header{text-align:center;padding:3.5rem 0 2.5rem;border-bottom:1px solid #1e293b;margin-bottom:2rem}
       .logo{font-size:2.8rem;font-weight:900;background:linear-gradient(135deg,#00d4ff 0%,#7b2ff7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
       .tagline{color:#475569;margin-top:.3rem;font-size:.95rem}
-
       /* summary grid */
       .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
       .scard{background:#0d1520;border:1px solid #1e293b;border-radius:10px;padding:1.2rem;text-align:center}
       .scard .val{font-size:1.6rem;font-weight:800;color:#00d4ff;letter-spacing:-.5px}
       .scard .lbl{font-size:.72rem;color:#475569;text-transform:uppercase;letter-spacing:.8px;margin-top:.2rem}
-
       /* findings banner */
       .findings-banner{background:linear-gradient(135deg,#0f172a,#1a0a2e);border:1px solid #4c1d95;border-left:4px solid #7b2ff7;border-radius:10px;padding:1.2rem 1.5rem;margin-bottom:1.8rem;font-size:.88rem}
-
       /* sections */
       .section{background:#0d1520;border:1px solid #1e293b;border-radius:10px;margin-bottom:1rem;overflow:hidden}
       .section-header{background:linear-gradient(90deg,#111827,#0d1520);padding:1rem 1.4rem;cursor:pointer;display:flex;align-items:center;gap:.8rem;transition:background .15s}
@@ -533,20 +495,17 @@ def export(scan_results: dict, output_path: str) -> str:
       .chevron{color:#475569;font-size:.9rem;transition:transform .2s}
       .section-body{padding:1.4rem;border-top:1px solid #1e293b}
       .section-body.collapsed{display:none}
-
       /* tables */
       table{width:100%;border-collapse:collapse;font-size:.875rem}
       th{text-align:left;padding:.65rem 1rem;background:#070c14;color:#00d4ff;font-size:.75rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #1e293b}
       td{padding:.6rem 1rem;border-bottom:1px solid #1a2235;vertical-align:top}
       tr:last-child td{border-bottom:none}
       tr:hover td{background:#0a1120}
-
       /* alerts */
       .alert{padding:.8rem 1rem;border-radius:8px;margin-bottom:.8rem;font-size:.875rem}
       .alert-warn{background:#1c0a00;border-left:3px solid #f88;color:#fca5a5}
       .alert-find{background:#0a1628;border-left:3px solid #60a5fa;color:#bfdbfe}
       .alert-crit{background:#1f0a0a;border-left:3px solid #f87171;color:#fca5a5}
-
       /* misc */
       .tag{display:inline-block;background:#1e293b;color:#94a3b8;padding:2px 7px;border-radius:4px;font-size:.78rem;margin:2px}
       .no-data{color:#475569;font-style:italic;padding:.5rem 0}
@@ -555,7 +514,6 @@ def export(scan_results: dict, output_path: str) -> str:
       .stat-lbl{font-size:.68rem;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-top:.1rem}
       .footer{text-align:center;padding:2rem 0;color:#334155;font-size:.8rem;border-top:1px solid #1e293b;margin-top:2rem}
     '''
-
     js = '''
       function toggle(header) {
         const body = header.nextElementSibling;
@@ -564,22 +522,20 @@ def export(scan_results: dict, output_path: str) -> str:
         chev.style.transform = body.classList.contains('collapsed') ? 'rotate(-90deg)' : '';
       }
     '''
-
     body = f'''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Twilight Orbit — {_e(target)}</title>
+  <title>Gravehound — {_e(target)}</title>
   <style>{css}</style>
 </head>
 <body>
 <div class="container">
   <div class="header">
-    <div class="logo">🌑 Twilight Orbit</div>
+    <div class="logo">🌑 Gravehound</div>
     <div class="tagline">Automated OSINT Recon Report &mdash; {_e(target)}</div>
   </div>
-
   <div class="summary">
     <div class="scard"><div class="val">{_e(target)}</div><div class="lbl">Target</div></div>
     <div class="scard"><div class="val">{_e(duration)}s</div><div class="lbl">Duration</div></div>
@@ -587,10 +543,8 @@ def export(scan_results: dict, output_path: str) -> str:
     <div class="scard"><div class="val" style="color:#f87171">{_e(failed)}</div><div class="lbl">Failed</div></div>
     <div class="scard"><div class="val" style="font-size:1rem">{_e(start_time)}</div><div class="lbl">Scan Date</div></div>
   </div>
-
   {findings_banner}
 '''
-
     MODULE_RENDERERS = [
         ('dns',             '🔍', 'DNS Records',                    _render_dns),
         ('whois',           '📋', 'WHOIS Information',              _render_whois),
@@ -609,7 +563,6 @@ def export(scan_results: dict, output_path: str) -> str:
         ('threat',          '🚨', 'Threat Intelligence',            _render_threat),
         ('shodan',          '🔎', 'Shodan / VirusTotal / AbuseIPDB',_render_shodan),
     ]
-
     for mod_key, icon, title, renderer in MODULE_RENDERERS:
         mod_data = results.get(mod_key)
         if not mod_data:
@@ -618,7 +571,6 @@ def export(scan_results: dict, output_path: str) -> str:
             content = renderer(mod_data)
         except Exception as ex:
             content = f'<p style="color:#f87171">Render error: {_e(str(ex))}</p>'
-        # Count indicator
         count = ''
         if mod_key == 'ports':
             count = f'{len(mod_data.get("open_ports",[]))} open'
@@ -633,16 +585,14 @@ def export(scan_results: dict, output_path: str) -> str:
         elif mod_key == 'dependency_chain':
             count = f'{mod_data.get("vuln_count",0)} vuln(s)'
         body += _section(icon, title, content, count)
-
     body += f'''
   <div class="footer">
-    Generated by <a href="https://github.com/WIzbisy/twilight-orbit">Twilight Orbit</a> v{_e(APP_VERSION)} &nbsp;|&nbsp; ⚠ For authorized security testing only
+    Generated by <a href="https://github.com/WIzbisy/gravehound">Gravehound</a> v{_e(APP_VERSION)} &nbsp;|&nbsp; ⚠ For authorized security testing only
   </div>
 </div>
 <script>{js}</script>
 </body>
 </html>'''
-
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(body)
     return output_path

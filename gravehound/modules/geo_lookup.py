@@ -1,13 +1,11 @@
 import socket
 import httpx
-from twilight_orbit.config import GEO_API_URL, DEFAULT_TIMEOUT, IPINFO_URL
+from gravehound.config import GEO_API_URL, DEFAULT_TIMEOUT, IPINFO_URL
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
-
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 _CLOUD_ASN_KEYWORDS = ['amazon', 'aws', 'google', 'microsoft', 'azure', 'cloudflare',
                        'fastly', 'akamai', 'digitalocean', 'linode', 'vultr', 'ovh',
                        'hetzner', 'alibaba', 'tencent']
-
 _HOSTING_TYPES = {
     'DataCenter': 'Dedicated datacenter / hosting',
     'ISP': 'Residential or business ISP',
@@ -17,7 +15,6 @@ _HOSTING_TYPES = {
     'Educational': 'Educational institution',
     'Government': 'Government network',
 }
-
 
 def _classify_network(isp: str, org: str, asn: str) -> str:
     combined = f'{isp} {org} {asn}'.lower()
@@ -32,7 +29,6 @@ def _classify_network(isp: str, org: str, asn: str) -> str:
         return 'datacenter'
     return 'unknown'
 
-
 def run(target: str) -> dict:
     results = {
         'module': 'IP Geolocation',
@@ -44,14 +40,12 @@ def run(target: str) -> dict:
         'findings': [],
         'errors': [],
     }
-
     try:
         ip = socket.gethostbyname(target)
         results['ip'] = ip
     except socket.gaierror as e:
         results['errors'].append(f'Could not resolve {target}: {str(e)}')
         return results
-
     try:
         all_ips = list({str(r[4][0]) for r in socket.getaddrinfo(target, None)})
         results['all_ips'] = sorted(all_ips)
@@ -59,7 +53,6 @@ def run(target: str) -> dict:
             results['findings'].append(f'Target resolves to {len(all_ips)} IPs — possible load balancer or CDN')
     except Exception:
         results['all_ips'] = [ip]
-
     headers = {'User-Agent': _UA}
     with httpx.Client(timeout=DEFAULT_TIMEOUT, headers=headers) as client:
         try:
@@ -95,7 +88,6 @@ def run(target: str) -> dict:
             results['errors'].append('ip-api.com request timed out')
         except Exception as e:
             results['errors'].append(f'Geolocation error: {type(e).__name__}: {str(e)}')
-
         if not results['location']:
             try:
                 url2 = IPINFO_URL.replace('{ip}', ip)
@@ -116,5 +108,4 @@ def run(target: str) -> dict:
                     }
             except Exception as e:
                 results['errors'].append(f'ipinfo.io fallback error: {str(e)}')
-
     return results

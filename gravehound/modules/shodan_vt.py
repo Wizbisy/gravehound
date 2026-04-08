@@ -2,10 +2,9 @@ import os
 import socket
 import httpx
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from twilight_orbit.config import DEFAULT_TIMEOUT
+from gravehound.config import DEFAULT_TIMEOUT
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
-
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 
 def _query_shodan(ip: str, api_key: str) -> dict:
     data: dict = {'available': True, 'ip': ip}
@@ -53,7 +52,6 @@ def _query_shodan(ip: str, api_key: str) -> dict:
         data['error'] = f'{type(e).__name__}: {str(e)}'
     return data
 
-
 def _query_virustotal(target: str, api_key: str) -> dict:
     data: dict = {'available': True}
     try:
@@ -100,7 +98,6 @@ def _query_virustotal(target: str, api_key: str) -> dict:
         data['error'] = f'{type(e).__name__}: {str(e)}'
     return data
 
-
 def _query_abuseipdb(ip: str, api_key: str) -> dict:
     data: dict = {'available': True, 'ip': ip}
     try:
@@ -145,7 +142,6 @@ def _query_abuseipdb(ip: str, api_key: str) -> dict:
         data['error'] = f'{type(e).__name__}: {str(e)}'
     return data
 
-
 def run(target: str) -> dict:
     results = {
         'module': 'Shodan / VirusTotal / AbuseIPDB',
@@ -157,32 +153,26 @@ def run(target: str) -> dict:
         'findings': [],
         'errors': [],
     }
-
     shodan_key = os.environ.get('SHODAN_API_KEY')
     vt_key = os.environ.get('VIRUSTOTAL_API_KEY')
     abuse_key = os.environ.get('ABUSEIPDB_API_KEY')
-
     if shodan_key:
         results['api_keys_configured'].append('Shodan')
     else:
         results['shodan'] = {'available': False, 'note': 'Set SHODAN_API_KEY in .env for Shodan data'}
-
     if vt_key:
         results['api_keys_configured'].append('VirusTotal')
     else:
         results['virustotal'] = {'available': False, 'note': 'Set VIRUSTOTAL_API_KEY in .env for VirusTotal data'}
-
     if abuse_key:
         results['api_keys_configured'].append('AbuseIPDB')
     else:
         results['abuseipdb'] = {'available': False, 'note': 'Set ABUSEIPDB_API_KEY in .env for AbuseIPDB data'}
-
     ip = None
     try:
         ip = socket.gethostbyname(target)
     except Exception:
         results['errors'].append(f'Could not resolve {target}')
-
     tasks = {}
     with ThreadPoolExecutor(max_workers=3) as executor:
         if ip and shodan_key:
@@ -191,19 +181,16 @@ def run(target: str) -> dict:
             tasks['virustotal'] = executor.submit(_query_virustotal, target, vt_key)
         if ip and abuse_key:
             tasks['abuseipdb'] = executor.submit(_query_abuseipdb, ip, abuse_key)
-
         for key, future in tasks.items():
             try:
                 results[key] = future.result()
             except Exception as e:
                 results['errors'].append(f'{key} error: {str(e)}')
-
     vt = results.get('virustotal', {})
     if vt.get('verdict') in ('MALICIOUS', 'SUSPICIOUS'):
         results['findings'].append(
             f'VirusTotal verdict: {vt["verdict"]} — {vt.get("malicious", 0)} engine(s) flagged'
         )
-
     shodan = results.get('shodan', {})
     if shodan.get('vulns'):
         results['findings'].append(
@@ -211,7 +198,6 @@ def run(target: str) -> dict:
         )
     if 'honeypot' in shodan.get('tags', []):
         results['findings'].append('Shodan tags this IP as a honeypot')
-
     abuse = results.get('abuseipdb', {})
     score = abuse.get('abuse_confidence_score', 0)
     if score >= 25:
@@ -220,5 +206,4 @@ def run(target: str) -> dict:
         )
     if abuse.get('is_tor'):
         results['findings'].append('IP is a Tor exit node (AbuseIPDB)')
-
     return results

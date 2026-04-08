@@ -4,7 +4,8 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.columns import Columns
 from rich import box
-from twilight_orbit.config import BANNER, TAGLINE, APP_VERSION
+from gravehound.config import BANNER, TAGLINE, APP_VERSION
+
 console = Console()
 
 def print_banner():
@@ -14,7 +15,7 @@ def print_banner():
     console.print(f'  [dim]v{APP_VERSION}[/dim]\n')
 
 def print_scan_header(target: str, modules: list[str]):
-    console.print(Panel(f"[bold white]Target:[/bold white] [cyan]{target}[/cyan]\n[bold white]Modules:[/bold white] [yellow]{', '.join(modules)}[/yellow]", title='[bold bright_green]🌑 Scan Initiated[/bold bright_green]', border_style='bright_green', padding=(1, 2)))
+    console.print(Panel(f"[bold white]Target:[/bold white] [cyan]{target}[/cyan]\n[bold white]Modules:[/bold white] [yellow]{', '.join(modules)}[/yellow]", title='[bold bright_green]🐾 Scan Initiated[/bold bright_green]', border_style='bright_green', padding=(1, 2)))
 
 def print_scan_summary(scan_results: dict):
     console.print()
@@ -245,6 +246,7 @@ def print_email_results(data: dict):
         console.print(f'\n  [dim]Common patterns to try:[/dim]')
         for p in patterns:
             console.print(f'  [dim]  • {p}[/dim]')
+
 PRINTERS = {'dns': print_dns_results, 'whois': print_whois_results, 'subdomains': print_subdomain_results, 'ports': print_port_results, 'headers': print_headers_results, 'ssl': print_ssl_results, 'tech': print_tech_results, 'geo': print_geo_results, 'emails': print_email_results, 'wayback': lambda data: _print_wayback(data), 'threat': lambda data: _print_threat(data), 'shodan': lambda data: _print_shodan(data)}
 
 def print_results(scan_results: dict):

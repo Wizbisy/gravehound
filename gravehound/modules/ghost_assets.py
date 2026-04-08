@@ -3,8 +3,7 @@ import dns.resolver
 import dns.exception
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
-
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 TAKEOVER_FINGERPRINTS = {
     'GitHub Pages':        {'cnames': ['.github.io'],            'fingerprints': ["There isn't a GitHub Pages site here", "404 There is no GitHub Pages site"],                         'severity': 'HIGH'},
     'AWS S3':              {'cnames': ['.s3.amazonaws.com', '.s3-website'],       'fingerprints': ['NoSuchBucket', 'The specified bucket does not exist'],                              'severity': 'CRITICAL'},
@@ -36,16 +35,15 @@ TAKEOVER_FINGERPRINTS = {
     'Wordpress.com':       {'cnames': ['.wordpress.com'],        'fingerprints': ["Do you want to register"],                                                                         'severity': 'MEDIUM'},
     'SmugMug':             {'cnames': ['.domains.smugmug.com'],  'fingerprints': ['Page Not Found'],                                                                                  'severity': 'LOW'},
     'Strikingly':          {'cnames': ['.s.strikinglydns.com'],  'fingerprints': ["But if you're looking to build your own website"],                                                 'severity': 'LOW'},
-}
 
+}
 _BUILD_SUBDOMAINS = [
     'www', 'blog', 'docs', 'help', 'shop', 'cdn', 'api', 'status', 'app',
     'dev', 'staging', 'beta', 'portal', 'admin', 'mail', 'support', 'forum',
     'wiki', 'media', 'assets', 'img', 'static', 'jobs', 'careers', 'community',
+
 ]
-
 _SEVERITY_ORDER = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}
-
 
 def _build_resolver() -> dns.resolver.Resolver:
     r = dns.resolver.Resolver(configure=False)
@@ -53,7 +51,6 @@ def _build_resolver() -> dns.resolver.Resolver:
     r.timeout = 5
     r.lifetime = 8
     return r
-
 
 def _get_crt_sh_subs(target: str) -> set[str]:
     subs: set[str] = set()
@@ -71,38 +68,28 @@ def _get_crt_sh_subs(target: str) -> set[str]:
         pass
     return subs
 
-
 def _check_subdomain(subdomain: str) -> dict | None:
     resolver = _build_resolver()
-
-    # --- NXDOMAIN / no-A-record check: dangling DNS pointing nowhere ---
     try:
         resolver.resolve(subdomain, 'A')
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
-        # Has a CNAME but no A record — classic dangling DNS setup
         pass
     except dns.exception.Timeout:
         return None
     except Exception:
         return None
-
-    # --- CNAME resolution ---
     cnames: list[str] = []
     try:
         answers = resolver.resolve(subdomain, 'CNAME')
         cnames = [str(r.target).rstrip('.').lower() for r in answers]
     except Exception:
         return None
-
     if not cnames:
         return None
-
     for cname in cnames:
         for service, data in TAKEOVER_FINGERPRINTS.items():
             if not any(cname.endswith(c) for c in data['cnames']):
                 continue
-
-            # Matched provider CNAME — now verify fingerprint in HTTP response
             fingerprints = data['fingerprints']
             for proto in ('https', 'http'):
                 try:
@@ -127,8 +114,6 @@ def _check_subdomain(subdomain: str) -> dict | None:
                                 }
                 except Exception:
                     continue
-
-            # CNAME points to provider but fingerprint check failed — still suspicious
             return {
                 'subdomain': subdomain,
                 'service': service,
@@ -137,9 +122,7 @@ def _check_subdomain(subdomain: str) -> dict | None:
                 'fingerprint_matched': None,
                 'note': 'CNAME points to provider but response fingerprint not confirmed — manual verification required',
             }
-
     return None
-
 
 def run(target: str) -> dict:
     results = {
@@ -151,14 +134,12 @@ def run(target: str) -> dict:
         'findings': [],
         'errors': [],
     }
-
     subs: set[str] = _get_crt_sh_subs(target)
     for prefix in _BUILD_SUBDOMAINS:
         subs.add(f'{prefix}.{target}')
     subs.discard(target)
     subdomain_list = sorted(subs)
     results['subdomains_checked'] = len(subdomain_list)
-
     with ThreadPoolExecutor(max_workers=25) as executor:
         futures = {executor.submit(_check_subdomain, sub): sub for sub in subdomain_list}
         for future in as_completed(futures):
@@ -179,15 +160,12 @@ def run(target: str) -> dict:
                         )
             except Exception as e:
                 results['errors'].append(f'Check failed: {str(e)}')
-
     results['takeovers'].sort(key=lambda x: _SEVERITY_ORDER.get(x.get('severity', 'LOW'), 99))
     results['findings'].sort()
-
     confirmed = len(results['takeovers'])
     if confirmed:
         results['findings'].insert(
             0,
             f'{confirmed} CONFIRMED subdomain takeover(s) — immediate remediation required'
         )
-
     return results

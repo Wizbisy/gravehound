@@ -1,17 +1,15 @@
 import time
 import httpx
-from twilight_orbit.config import WAYBACK_API_URL, DEFAULT_TIMEOUT
+from gravehound.config import WAYBACK_API_URL, DEFAULT_TIMEOUT
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0; +https://github.com/WIzbisy/twilight-orbit)'
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0; +https://github.com/WIzbisy/gravehound)'
 MAX_SNAPSHOTS = 50
 _MAX_RETRIES = 2
-
 
 def _format_ts(ts: str) -> str:
     if len(ts) >= 8:
         return f'{ts[:4]}-{ts[4:6]}-{ts[6:8]}'
     return ts
-
 
 def _safe_get(client: httpx.Client, url: str) -> httpx.Response | None:
     for attempt in range(_MAX_RETRIES + 1):
@@ -24,7 +22,6 @@ def _safe_get(client: httpx.Client, url: str) -> httpx.Response | None:
         except httpx.HTTPStatusError:
             raise
     return None
-
 
 def run(target: str) -> dict:
     results = {
@@ -43,9 +40,7 @@ def run(target: str) -> dict:
         },
         'errors': [],
     }
-
     headers = {'User-Agent': _UA}
-
     with httpx.Client(timeout=DEFAULT_TIMEOUT, headers=headers) as client:
         try:
             url = WAYBACK_API_URL.replace('{target}', target)
@@ -66,7 +61,6 @@ def run(target: str) -> dict:
             results['errors'].append({'source': 'availability_api', 'reason': 'timeout'})
         except Exception as e:
             results['errors'].append({'source': 'availability_api', 'reason': str(e)})
-
         try:
             cdx_url = (
                 f'https://web.archive.org/cdx/search/cdx'
@@ -85,7 +79,6 @@ def run(target: str) -> dict:
                     rows = data[1:]
                     mime_types: set[str] = set()
                     timestamps: list[str] = []
-
                     for row in rows:
                         entry = dict(zip(headers_row, row))
                         ts = entry.get('timestamp', '')
@@ -102,12 +95,10 @@ def run(target: str) -> dict:
                             'mimetype': mime,
                             'source': 'cdx_api',
                         })
-
                     results['has_archive'] = True
                     results['total_snapshots'] = len(rows)
                     results['truncated'] = len(rows) >= MAX_SNAPSHOTS
                     results['unique_mime_types'] = sorted(mime_types)
-
                     if timestamps:
                         timestamps_sorted = sorted(timestamps)
                         first_ts = timestamps_sorted[0]
@@ -122,10 +113,8 @@ def run(target: str) -> dict:
                             results['summary']['archive_age_years'] = current_year - first_year
                         except (ValueError, IndexError):
                             pass
-
         except httpx.TimeoutException:
             results['errors'].append({'source': 'cdx_api', 'reason': 'timeout'})
         except Exception as e:
             results['errors'].append({'source': 'cdx_api', 'reason': str(e)})
-
     return results

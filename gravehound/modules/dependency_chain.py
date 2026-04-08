@@ -1,12 +1,10 @@
 import re
 import httpx
-from twilight_orbit.config import DEFAULT_TIMEOUT
+from gravehound.config import DEFAULT_TIMEOUT
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
-
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 _SCRIPT_RE = re.compile(r'<script[^>]+src=["\']([^"\']+)["\']', re.IGNORECASE)
 _VERSION_RE = re.compile(r'(?:^|[-/@])([0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-[a-zA-Z0-9.]+)?)(?:$|[/\-?]|\.min|\.js)')
-
 _KNOWN_VULNS: list[tuple[re.Pattern, str, str, str]] = [
     (re.compile(r'^jquery$'), lambda v: _semver_lt(v, '3.5.0'), 'CVE-2020-11022 / CVE-2020-11023 — XSS via .html()', 'HIGH'),
     (re.compile(r'^jquery$'), lambda v: _semver_lt(v, '3.0.0'), 'EOL jQuery 1.x/2.x — multiple XSS CVEs', 'CRITICAL'),
@@ -22,7 +20,6 @@ _KNOWN_VULNS: list[tuple[re.Pattern, str, str, str]] = [
     (re.compile(r'^dompurify$'), lambda v: _semver_lt(v, '2.4.0'), 'DOMPurify < 2.4.0 — mXSS bypass', 'HIGH'),
 ]
 
-
 def _semver_lt(version: str, threshold: str) -> bool:
     try:
         v = tuple(int(x) for x in version.split('-')[0].split('.')[:3])
@@ -34,7 +31,6 @@ def _semver_lt(version: str, threshold: str) -> bool:
         return v < t
     except (ValueError, AttributeError):
         return False
-
 
 def _extract_deps(html: str) -> list[dict]:
     deps: dict[str, str] = {}
@@ -57,7 +53,6 @@ def _extract_deps(html: str) -> list[dict]:
                 deps[lib_name] = version
     return [{'name': k, 'version': v} for k, v in deps.items()]
 
-
 def _check_vulns(deps: list[dict]) -> list[dict]:
     vulnerabilities = []
     for dep in deps:
@@ -77,7 +72,6 @@ def _check_vulns(deps: list[dict]) -> list[dict]:
                     pass
     return vulnerabilities
 
-
 def run(target: str) -> dict:
     results = {
         'module': 'Dependency Chain',
@@ -88,7 +82,6 @@ def run(target: str) -> dict:
         'findings': [],
         'errors': [],
     }
-
     html = ''
     for proto in ('https', 'http'):
         try:
@@ -110,28 +103,21 @@ def run(target: str) -> dict:
         except Exception as e:
             results['errors'].append(f'{proto} fetch error: {type(e).__name__}: {str(e)}')
             continue
-
     if not html:
         return results
-
     try:
         deps = _extract_deps(html)
         results['dependencies'] = deps
-
         vulns = _check_vulns(deps)
         results['vulnerabilities'] = vulns
         results['vuln_count'] = len(vulns)
-
         for v in vulns:
             results['findings'].append(
                 f'[{v["severity"]}] {v["library"]} v{v["version"]}: {v["description"]}'
             )
-
         critical = [v for v in vulns if v['severity'] == 'CRITICAL']
         if critical:
             results['findings'].insert(0, f'{len(critical)} CRITICAL vulnerable librar(ies) detected — immediate action required')
-
     except Exception as e:
         results['errors'].append(f'Dependency analysis error: {type(e).__name__}: {str(e)}')
-
     return results

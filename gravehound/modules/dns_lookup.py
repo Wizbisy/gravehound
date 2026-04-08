@@ -1,9 +1,8 @@
 import dns.resolver
 import dns.exception
-from twilight_orbit.config import DNS_RECORD_TYPES, DEFAULT_DNS_TIMEOUT
+from gravehound.config import DNS_RECORD_TYPES, DEFAULT_DNS_TIMEOUT
 
 _RESOLVERS = ['1.1.1.1', '8.8.8.8', '8.8.4.4', '1.0.0.1', '9.9.9.9']
-
 
 def _build_resolver() -> dns.resolver.Resolver:
     resolver = dns.resolver.Resolver(configure=False)
@@ -11,7 +10,6 @@ def _build_resolver() -> dns.resolver.Resolver:
     resolver.timeout = DEFAULT_DNS_TIMEOUT
     resolver.lifetime = DEFAULT_DNS_TIMEOUT * 2
     return resolver
-
 
 def _parse_rdata(record_type: str, rdata) -> dict | str:
     if record_type == 'MX':
@@ -32,7 +30,6 @@ def _parse_rdata(record_type: str, rdata) -> dict | str:
     if record_type == 'TXT':
         return ' '.join(part.decode('utf-8', errors='replace') for part in rdata.strings)
     return str(rdata)
-
 
 def _flag_interesting(record_type: str, records: list) -> list[str]:
     findings = []
@@ -55,7 +52,6 @@ def _flag_interesting(record_type: str, records: list) -> list[str]:
                 findings.append(f'Cloud-hosted nameserver: {rec}')
     return findings
 
-
 def run(target: str) -> dict:
     results = {
         'module': 'DNS Lookup',
@@ -65,10 +61,8 @@ def run(target: str) -> dict:
         'record_count': 0,
         'errors': [],
     }
-
     resolver = _build_resolver()
     domain_exists = True
-
     for record_type in DNS_RECORD_TYPES:
         try:
             answers = resolver.resolve(target, record_type)
@@ -83,7 +77,6 @@ def run(target: str) -> dict:
                 results['record_count'] += len(parsed)
                 interesting = _flag_interesting(record_type, parsed)
                 results['findings'].extend(interesting)
-
         except dns.resolver.NoAnswer:
             pass
         except dns.resolver.NXDOMAIN:
@@ -100,6 +93,5 @@ def run(target: str) -> dict:
             results['errors'].append(f'Lifetime timeout querying {record_type} record')
         except Exception as e:
             results['errors'].append(f'Error querying {record_type}: {type(e).__name__}: {str(e)}')
-
     results['findings'] = list(dict.fromkeys(results['findings']))
     return results

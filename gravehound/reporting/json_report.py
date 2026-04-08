@@ -1,20 +1,15 @@
 import json
 import datetime
-from twilight_orbit.config import APP_NAME, APP_VERSION, APP_URL
-
+from gravehound.config import APP_NAME, APP_VERSION, APP_URL
 _SEVERITY_ORDER = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3, 'INFO': 4}
-
 
 def _build_findings_index(results: dict) -> list[dict]:
     """Aggregate all findings / vulnerabilities / leaks into one sorted list."""
     index: list[dict] = []
-
     for mod_key, data in results.items():
         if not isinstance(data, dict):
             continue
         module_name = data.get('module', mod_key)
-
-        # Generic findings[] list present on most modules
         for finding in data.get('findings', []):
             sev = 'INFO'
             f_lower = str(finding).lower()
@@ -27,8 +22,6 @@ def _build_findings_index(results: dict) -> list[dict]:
             elif any(w in f_lower for w in ('low', 'info', 'disclosed', 'note')):
                 sev = 'LOW'
             index.append({'severity': sev, 'module': module_name, 'finding': finding})
-
-        # wayback_secrets leaks
         for leak in data.get('leaks_found', []):
             index.append({
                 'severity': leak.get('severity', 'MEDIUM'),
@@ -37,8 +30,6 @@ def _build_findings_index(results: dict) -> list[dict]:
                 'archived_date': leak.get('archived_date', ''),
                 'source_urls': leak.get('source_urls', []),
             })
-
-        # ghost_assets takeovers
         for t in data.get('takeovers', []):
             index.append({
                 'severity': t.get('severity', 'HIGH'),
@@ -46,18 +37,14 @@ def _build_findings_index(results: dict) -> list[dict]:
                 'finding': f'Subdomain takeover: {t.get("subdomain")} → {t.get("service")} (CNAME: {t.get("cname")})',
                 'fingerprint': t.get('fingerprint_matched'),
             })
-
-        # dependency_chain vulnerabilities
         for v in data.get('vulnerabilities', []):
             index.append({
                 'severity': v.get('severity', 'MEDIUM'),
                 'module': module_name,
                 'finding': f'{v.get("library")} v{v.get("version")}: {v.get("description")}',
             })
-
     index.sort(key=lambda x: _SEVERITY_ORDER.get(x.get('severity', 'INFO'), 99))
     return index
-
 
 def _build_severity_summary(findings_index: list[dict]) -> dict:
     summary: dict[str, int] = {}
@@ -66,11 +53,9 @@ def _build_severity_summary(findings_index: list[dict]) -> dict:
         summary[sev] = summary.get(sev, 0) + 1
     return summary
 
-
 def _build_assets(results: dict) -> dict:
     """Compact asset inventory extracted from scan results."""
     assets: dict = {}
-
     geo = results.get('geo', {})
     if geo.get('ip'):
         assets['ip'] = geo['ip']
@@ -78,7 +63,6 @@ def _build_assets(results: dict) -> dict:
         assets['all_ips'] = geo['all_ips']
     if geo.get('network_classification'):
         assets['network_classification'] = geo['network_classification']
-
     ssl = results.get('ssl', {})
     cert = ssl.get('certificate', {})
     if cert:
@@ -91,7 +75,6 @@ def _build_assets(results: dict) -> dict:
             'protocol': cert.get('protocol', ''),
             'san_count': cert.get('san_count', 0),
         }
-
     subs = results.get('subdomains', {})
     if subs.get('subdomains'):
         assets['subdomains'] = {
@@ -99,24 +82,20 @@ def _build_assets(results: dict) -> dict:
             'list': subs.get('subdomains', []),
             'takeover_candidates': subs.get('takeover_candidates', []),
         }
-
     ports = results.get('ports', {})
     if ports.get('open_ports'):
         assets['open_ports'] = [
             {'port': p['port'], 'service': p['service'], 'banner': p.get('banner', '')[:100]}
             for p in ports['open_ports']
         ]
-
     tech = results.get('tech', {})
     if tech.get('technologies'):
         assets['technologies'] = tech['technologies']
         assets['tech_categories'] = tech.get('categories', {})
-
     emails = results.get('emails', {})
     if emails.get('emails'):
         assets['emails'] = emails['emails']
         assets['email_classified'] = emails.get('classified', {})
-
     whois = results.get('whois', {})
     if whois.get('data'):
         d = whois['data']
@@ -128,14 +107,11 @@ def _build_assets(results: dict) -> dict:
             'name_servers': d.get('name_servers', []),
             'dnssec': d.get('dnssec', ''),
         }
-
     return assets
-
 
 def export(scan_results: dict, output_path: str | None = None) -> str:
     results = scan_results.get('results', {})
     findings_index = _build_findings_index(results)
-
     report = {
         'meta': {
             'tool': APP_NAME,
@@ -170,11 +146,8 @@ def export(scan_results: dict, output_path: str | None = None) -> str:
         'assets': _build_assets(results),
         'modules': results,
     }
-
     json_str = json.dumps(report, indent=2, ensure_ascii=False, default=str)
-
     if output_path:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(json_str)
-
     return json_str

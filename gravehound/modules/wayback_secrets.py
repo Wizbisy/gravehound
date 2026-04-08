@@ -3,18 +3,16 @@ import math
 import asyncio
 import urllib.parse
 import httpx
-from twilight_orbit.config import DEFAULT_TIMEOUT
+from gravehound.config import DEFAULT_TIMEOUT
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 MAX_URLS = 50
 _CONCURRENCY = 8
-
 TARGET_EXTENSIONS = (
     '.js', '.json', '.txt', '.env', '.sql', '.xml', '.yml', '.yaml',
     '.ini', '.conf', '.config', '.bak', '.log', '.sh', '.php',
     '.properties', '.toml', '.pem', '.key', '.crt', '.cer',
 )
-
 SECRETS_PATTERNS: list[dict] = [
     {'name': 'AWS Access Key ID',        'pattern': r'AKIA[0-9A-Z]{16}',                                                        'severity': 'CRITICAL'},
     {'name': 'AWS Secret Key',           'pattern': r'(?i)aws.{0,20}secret.{0,5}[=:]\s*["\']?([A-Za-z0-9/+]{40})["\']?',       'severity': 'CRITICAL'},
@@ -51,15 +49,13 @@ SECRETS_PATTERNS: list[dict] = [
     {'name': 'Generic API Key/Secret',   'pattern': r'(?i)(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token)[^\w]{1,5}[=:]\s*["\']?([A-Za-z0-9/\-_+.]{20,80})["\']?', 'severity': 'MEDIUM'},
     {'name': 'Generic Password Field',   'pattern': r'(?i)(?:password|passwd|pwd)[^\w]{1,5}[=:]\s*["\']([^"\'\\]{8,64})["\']', 'severity': 'MEDIUM'},
 ]
-
 _COMPILED = [
     {**p, '_re': re.compile(p['pattern'])}
     for p in SECRETS_PATTERNS
-]
 
+]
 _PRIORITY_EXTS = {'.env', '.yml', '.yaml', '.ini', '.bak', '.sql', '.conf', '.config', '.properties', '.toml', '.pem', '.key'}
 _SEVERITY_ORDER = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}
-
 
 def _entropy(s: str) -> float:
     if not s:
@@ -70,12 +66,10 @@ def _entropy(s: str) -> float:
     n = len(s)
     return -sum((f / n) * math.log2(f / n) for f in freq.values())
 
-
 def _redact(value: str) -> str:
     if len(value) <= 6:
         return value[:2] + '***'
     return value[:8] + '...[REDACTED]'
-
 
 def _parse_archived_date(archive_url: str) -> str:
     try:
@@ -87,7 +81,6 @@ def _parse_archived_date(archive_url: str) -> str:
     except Exception:
         pass
     return ''
-
 
 def _fetch_cdx_urls(target: str) -> list[str]:
     urls: list[str] = []
@@ -121,7 +114,6 @@ def _fetch_cdx_urls(target: str) -> list[str]:
         pass
     return urls
 
-
 def _priority(url: str) -> int:
     lower = url.lower()
     if any(ext in lower for ext in _PRIORITY_EXTS):
@@ -129,7 +121,6 @@ def _priority(url: str) -> int:
     if '.json' in lower or '.xml' in lower:
         return 1
     return 2
-
 
 async def _fetch_and_scan(url: str, sem: asyncio.Semaphore, client: httpx.AsyncClient) -> list[dict]:
     findings = []
@@ -140,17 +131,14 @@ async def _fetch_and_scan(url: str, sem: asyncio.Semaphore, client: httpx.AsyncC
                 return findings
             text = resp.text
             archived_date = _parse_archived_date(url)
-
             for pat in _COMPILED:
                 for match in pat['_re'].finditer(text):
                     raw = match.group(0) if match.lastindex is None else (match.group(1) or match.group(0))
                     if not raw or len(raw) > 200:
                         continue
-
                     if pat['name'] in ('Generic API Key/Secret', 'Generic Password Field', 'JWT Token'):
                         if _entropy(raw) < 3.5:
                             continue
-
                     findings.append({
                         'pattern': pat['name'],
                         'severity': pat['severity'],
@@ -163,7 +151,6 @@ async def _fetch_and_scan(url: str, sem: asyncio.Semaphore, client: httpx.AsyncC
         except Exception:
             pass
     return findings
-
 
 def _deduplicate(raw: list[dict]) -> list[dict]:
     seen: dict[tuple, dict] = {}
@@ -178,11 +165,9 @@ def _deduplicate(raw: list[dict]) -> list[dict]:
         item.pop('source_url', None)
     return sorted(seen.values(), key=lambda x: _SEVERITY_ORDER.get(x['severity'], 99))
 
-
 async def _run_async(target: str) -> tuple[list[str], list[dict]]:
     raw_urls = _fetch_cdx_urls(target)
     urls = sorted(raw_urls, key=_priority)[:MAX_URLS]
-
     sem = asyncio.Semaphore(_CONCURRENCY)
     async with httpx.AsyncClient(
         verify=False,
@@ -192,14 +177,11 @@ async def _run_async(target: str) -> tuple[list[str], list[dict]]:
     ) as client:
         tasks = [_fetch_and_scan(url, sem, client) for url in urls]
         results_nested = await asyncio.gather(*tasks, return_exceptions=True)
-
     raw: list[dict] = []
     for item in results_nested:
         if isinstance(item, list):
             raw.extend(item)
-
     return urls, raw
-
 
 def run(target: str) -> dict:
     results = {
@@ -212,7 +194,6 @@ def run(target: str) -> dict:
         'ssl_warning': 'TLS verification disabled for Wayback Machine (mixed-cert archive)',
         'errors': [],
     }
-
     try:
         urls, raw_findings = asyncio.run(_run_async(target))
     except RuntimeError:
@@ -221,17 +202,13 @@ def run(target: str) -> dict:
             urls, raw_findings = loop.run_until_complete(_run_async(target))
         finally:
             loop.close()
-
     results['urls_scanned'] = len(urls)
     results['total_urls_found'] = len(urls)
-
     deduped = _deduplicate(raw_findings)
     results['leaks_found'] = deduped
-
     severity_summary: dict[str, int] = {}
     for leak in deduped:
         sev = leak['severity']
         severity_summary[sev] = severity_summary.get(sev, 0) + 1
     results['severity_summary'] = severity_summary
-
     return results

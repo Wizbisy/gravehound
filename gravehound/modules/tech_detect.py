@@ -1,9 +1,8 @@
 import re
 import httpx
-from twilight_orbit.config import DEFAULT_TIMEOUT
+from gravehound.config import DEFAULT_TIMEOUT
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
-
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 TECH_SIGNATURES = {
     'headers': {
         'server': {
@@ -81,8 +80,8 @@ TECH_SIGNATURES = {
         'Shopify': r'_shopify_',
         'Ghost': r'ghost-admin-api-session',
     },
-}
 
+}
 _CATEGORY_MAP = {
     'server': ['Apache', 'Nginx', 'IIS', 'LiteSpeed', 'Caddy', 'Gunicorn', 'Cowboy', 'Openresty', 'Tomcat', 'Jetty', 'Kestrel'],
     'framework': ['PHP', 'ASP.NET', 'Express.js', 'Next.js', 'Nuxt.js', 'Flask', 'Django', 'Ruby on Rails', 'Laravel', 'Rails'],
@@ -93,16 +92,16 @@ _CATEGORY_MAP = {
     'analytics': ['Google Analytics', 'Google Tag Manager', 'HubSpot', 'Intercom', 'Datadog', 'Sentry'],
     'payment': ['Stripe'],
     'security': ['reCAPTCHA'],
-}
 
+}
 _RISKY_TECH = {
     'jQuery': 'jQuery versions < 3.x have known XSS vulnerabilities — verify version is patched',
     'PHP': 'PHP exposed via headers — remove x-powered-by to avoid fingerprinting',
     'ASP.NET': 'ASP.NET version disclosed — remove x-powered-by header',
     'WordPress': 'WordPress detected — ensure wp-login.php is protected and plugins are updated',
     'Drupal': 'Drupal detected — ensure core and modules are patched (Drupalgeddon risk)',
-}
 
+}
 
 def run(target: str) -> dict:
     results = {
@@ -114,9 +113,7 @@ def run(target: str) -> dict:
         'findings': [],
         'errors': [],
     }
-
     detected: set[str] = set()
-
     for url in [f'https://{target}', f'http://{target}']:
         try:
             with httpx.Client(
@@ -129,7 +126,6 @@ def run(target: str) -> dict:
                 headers = response.headers
                 body = response.text[:80000]
                 cookies_str = str(response.cookies)
-
                 for header_name, patterns in TECH_SIGNATURES['headers'].items():
                     header_value = headers.get(header_name, '')
                     if not header_value:
@@ -137,19 +133,15 @@ def run(target: str) -> dict:
                     for tech_name, pattern in patterns.items():
                         if re.search(pattern, header_value, re.IGNORECASE):
                             detected.add(tech_name)
-
                 for tech_name, patterns in TECH_SIGNATURES['html'].items():
                     for pattern in patterns:
                         if re.search(pattern, body, re.IGNORECASE):
                             detected.add(tech_name)
                             break
-
                 for tech_name, pattern in TECH_SIGNATURES['cookies'].items():
                     if re.search(pattern, cookies_str, re.IGNORECASE):
                         detected.add(tech_name)
-
                 break
-
         except httpx.ConnectError:
             continue
         except httpx.TimeoutException:
@@ -158,7 +150,6 @@ def run(target: str) -> dict:
         except Exception as e:
             results['errors'].append(f'Error detecting tech at {url}: {type(e).__name__}: {str(e)}')
             continue
-
     for tech in sorted(detected):
         results['technologies'].append(tech)
         placed = False
@@ -169,9 +160,7 @@ def run(target: str) -> dict:
                 break
         if not placed:
             results['categories']['other'].append(tech)
-
         if tech in _RISKY_TECH:
             results['findings'].append(_RISKY_TECH[tech])
-
     results['categories'] = {k: v for k, v in results['categories'].items() if v}
     return results

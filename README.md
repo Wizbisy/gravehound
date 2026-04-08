@@ -1,7 +1,7 @@
 <div align="center">
 
-# 🌑 Twilight Orbit
-### Automated OSINT Recon Tool | See What's Hidden in the Shadows
+# 🐾 Gravehound
+### Automated OSINT Recon Tool | Digging Up Buried Secrets
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
@@ -12,26 +12,19 @@ A powerful, modular OSINT reconnaissance tool designed specifically for bug boun
 Powered by **real free APIs**: AlienVault OTX, URLScan.io, Internet Archive, ThreatFox, Shodan, SecurityTrails and more. 🔍
 
 ---
-*(ASCII Art placeholder)*
 ```text
-  ████████╗██╗    ██╗██╗██╗     ██╗ ██████╗ ██╗  ██╗████████╗
-  ╚══██╔══╝██║    ██║██║██║     ██║██╔════╝ ██║  ██║╚══██╔══╝
-     ██║   ██║ █╗ ██║██║██║     ██║██║  ███╗███████║   ██║   
-     ██║   ██║███╗██║██║██║     ██║██║   ██║██╔══██║   ██║   
-     ██║   ╚███╔███╔╝██║███████╗██║╚██████╔╝██║  ██║   ██║   
-     ╚═╝    ╚══╝╚══╝ ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   
-           ██████╗ ██████╗ ██████╗ ██╗████████╗
-          ██╔═══██╗██╔══██╗██╔══██╗██║╚══██╔══╝
-          ██║   ██║██████╔╝██████╔╝██║   ██║   
-          ██║   ██║██╔══██╗██╔══██╗██║   ██║   
-          ╚██████╔╝██║  ██║██████╔╝██║   ██║   
-           ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝   ╚═╝   
+   ██████╗ ██████╗  █████╗ ██╗   ██╗███████╗██╗  ██╗ ██████╗ ██╗   ██╗███╗   ██╗██████╗
+  ██╔════╝ ██╔══██╗██╔══██╗██║   ██║██╔════╝██║  ██║██╔═══██╗██║   ██║████╗  ██║██╔══██╗
+  ██║  ███╗██████╔╝███████║██║   ██║█████╗  ███████║██║   ██║██║   ██║██╔██╗ ██║██║  ██║
+  ██║   ██║██╔══██╗██╔══██║╚██╗ ██╔╝██╔══╝  ██╔══██║██║   ██║██║   ██║██║╚██╗██║██║  ██║
+  ╚██████╔╝██║  ██║██║  ██║ ╚████╔╝ ███████╗██║  ██║╚██████╔╝╚██████╔╝██║ ╚████║██████╔╝
+   ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚═════╝
 ```
 ---
 
 </div>
 
-## 📖 Table of Contents
+## Table of Contents
 - [Features](#-features)
 - [Quick Start](#-quick-start)
 - [Usage Examples](#-usage-examples)
@@ -42,9 +35,9 @@ Powered by **real free APIs**: AlienVault OTX, URLScan.io, Internet Archive, Thr
 
 ---
 
-## ⚡ Features
+## Features
 
-Twilight Orbit runs 12 parallel modules to extract every drop of public intelligence on a target.
+Gravehound runs 16 parallel modules to extract every drop of public intelligence on a target.
 
 | Module | Description | Data Sources / Libraries |
 |--------|------------|-------------------------|
@@ -63,10 +56,11 @@ Twilight Orbit runs 12 parallel modules to extract every drop of public intellig
 |  **Dependency Analyzer**| Parses client-side scripts to identify outdated libraries with known CVEs (e.g. ancient jQuery). | `httpx`, regex |
 |  **Threat Intel** | Cross-references the domain against global threat intelligence feeds. | AlienVault OTX, URLScan.io, ThreatFox, HackerTarget |
 |  **Shodan / VT** | Queries the biggest cybersecurity databases for vulnerabilities and malware reputation. | Shodan, VirusTotal, AbuseIPDB |
+|  **Ghost Assets** | Detects dangling DNS records and subdomain takeover vulnerabilities across 31 providers. | `httpx`, DNS resolution |
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Requirements
 - **Python 3.10+**
@@ -77,8 +71,8 @@ The fastest way to get started is to clone the repository and set up a virtual e
 
 ```bash
 # Clone the repository
-git clone https://github.com/WIzbisy/twilight-orbit.git
-cd twilight-orbit
+git clone https://github.com/WIzbisy/gravehound.git
+cd gravehound
 
 # Create a virtual environment (Recommended)
 python -m venv venv
@@ -95,47 +89,47 @@ pip install -r requirements.txt
 
 ---
 
-## 💻 Usage Examples
+## Usage Examples
 
-Twilight Orbit is built on top of `click` for a clean, intuitive command-line interface.
+Gravehound is built on top of `click` for a clean, intuitive command-line interface.
 
 ### Running a Full Scan
-Run all 12 modules against a target domain.
+Run all 16 modules against a target domain.
 ```bash
-python -m twilight_orbit scan example.com
+python -m gravehound scan example.com
 ```
 
 ### Targeted Scans
 Only care about subdomains and open ports? Use the `--modules` (or `-m`) flag.
 ```bash
-python -m twilight_orbit scan example.com -m subdomains,ports,dns
+python -m gravehound scan example.com -m subdomains,ports,dns
 ```
 
 ### Generating Beautiful Reports
-Twilight Orbit generates interactive HTML reports that are perfect for delivering to clients or bug bounty programs.
+Gravehound generates interactive HTML reports that are perfect for delivering to clients or bug bounty programs.
 ```bash
 # Output results to an HTML file
-python -m twilight_orbit scan example.com --output report.html
+python -m gravehound scan example.com --output report.html
 
 # Output results to machine-readable JSON (useful for CI/CD or jq parsing)
-python -m twilight_orbit scan example.com --output results.json
+python -m gravehound scan example.com --output results.json
 ```
 
 ### Help Menu
 View all available commands and modules.
 ```bash
-python -m twilight_orbit --help
-python -m twilight_orbit modules
+python -m gravehound --help
+python -m gravehound modules
 ```
 
 ---
 
-## 🔑 Optional API Keys / Environmental Variables
+## Optional API Keys / Environmental Variables
 
-Twilight Orbit performs highly effective reconnaissance **out-of-the-box with zero configuration.**
+Gravehound performs highly effective reconnaissance **out-of-the-box with zero configuration.**
 However, you can turbocharge the modules by providing API keys for premium (but free-tier) services. 
 
-Twilight Orbit uses `python-dotenv` to automatically load keys. Create a `.env` file in the root directory like this:
+Gravehound uses `python-dotenv` to automatically load keys. Create a `.env` file in the root directory like this:
 
 ```env
 # ─── Threat Intelligence ──────────────────────────────────────────
@@ -165,7 +159,7 @@ SECURITYTRAILS_API_KEY=your_securitytrails_key_here
 
 ---
 
-## 📊 Output Formats
+## Output Formats
 
 1. **Terminal (Rich)**: Beautiful, color-coded tables, progress bars, and panels rendered natively in your terminal using the `rich` library.
 2. **HTML Report**: A stunning, self-contained, dark-themed HTML report. It parses the data into clean tables with security score widgets.
@@ -173,15 +167,15 @@ SECURITYTRAILS_API_KEY=your_securitytrails_key_here
 
 ---
 
-## 🏗️ Project Architecture
+## Project Architecture
 
 If you want to contribute or build your own modules, here is the architecture:
 
 ```text
-twilight-orbit/
-├── twilight_orbit/
+gravehound/                      ← repo root
+├── gravehound/
 │   ├── cli.py               # CLI entry point (Click)
-│   ├── scanner.py           # Orchestrator that runs the modules in parallel
+│   ├── scanner.py           # Orchestrator that runs the modules
 │   ├── config.py            # Global configuration & constants
 │   ├── modules/
 │   │   ├── dns_lookup.py    # DNS records module
@@ -198,12 +192,12 @@ twilight-orbit/
 │   │   ├── dom_fingerprint.py # Headless browser framework detection
 │   │   ├── dependency_chain.py# Frontend vulnerable libs check
 │   │   ├── threat_intel.py  # AlienVault OTX, URLScan, ThreatFox
-│   │   └── shodan_vt.py     # Shodan, VirusTotal, AbuseIPDB
+│   │   ├── shodan_vt.py     # Shodan, VirusTotal, AbuseIPDB
+│   │   └── ghost_assets.py  # Subdomain takeover scanner
 │   └── reporting/
 │       ├── console.py       # Terminal rendering logic (Rich)
 │       ├── json_report.py   # JSON export logic
 │       └── html_report.py   # HTML template and rendering
-├── tests/                   # (Optional) Unit tests structure
 ├── requirements.txt         # Project dependencies
 ├── .env                     # (You create this) API Keys
 ├── .gitignore               # Ignored files for git
@@ -218,7 +212,7 @@ We welcome contributions! Please see the `CONTRIBUTING.md` file for guidelines o
 
 ## ⚖️ Disclaimer
 
-> **⚠️ Twilight Orbit is intended for authorized security testing, educational purposes.**
+> **⚠️ Gravehound is intended for authorized security testing and educational purposes only.**
 >
 > You must only scan targets that you own or have explicit written permission to test (e.g., Bug Bounty programs). Unauthorized scanning of infrastructure may be illegal in your jurisdiction. The authors and maintainers are not responsible for any misuse of this tool.
 

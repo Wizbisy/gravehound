@@ -8,7 +8,6 @@ def run(target: str) -> dict:
         'findings': [],
         'errors': [],
     }
-
     try:
         from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
     except ImportError:
@@ -16,7 +15,6 @@ def run(target: str) -> dict:
             "Playwright not installed — run: pip install playwright && playwright install chromium"
         )
         return results
-
     JS_PROBES = [
         ('React', "() => { try { return !!(window.React || document.querySelector('[data-reactroot],[data-reactid]')); } catch(e){return false;} }"),
         ('Angular', "() => { try { return !!(window.angular || document.querySelector('.ng-binding,[ng-app],[data-ng-app],[ng-controller],[ng-version]')); } catch(e){return false;} }"),
@@ -31,14 +29,12 @@ def run(target: str) -> dict:
         ('Alpine.js', "() => { try { return !!(window.Alpine || document.querySelector('[x-data]')); } catch(e){return false;} }"),
         ('HTMX', "() => { try { return !!(window.htmx || document.querySelector('[hx-get],[hx-post]')); } catch(e){return false;} }"),
     ]
-
     JS_VERSIONS = {
         'React': "() => { try { return window.React?.version || null; } catch(e){return null;} }",
         'Vue.js': "() => { try { return window.Vue?.version || window.__vue_app__?.version || null; } catch(e){return null;} }",
         'jQuery': "() => { try { return window.jQuery?.fn?.jquery || null; } catch(e){return null;} }",
         'Angular': "() => { try { return window.angular?.version?.full || null; } catch(e){return null;} }",
     }
-
     JS_META = {
         'title': "() => document.title || ''",
         'description': "() => document.querySelector('meta[name=\"description\"]')?.content || ''",
@@ -48,7 +44,6 @@ def run(target: str) -> dict:
         'canonical': "() => document.querySelector('link[rel=\"canonical\"]')?.href || ''",
         'csrf_meta': "() => !!(document.querySelector('meta[name=\"csrf-token\"],meta[name=\"_token\"]'))",
     }
-
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -56,12 +51,11 @@ def run(target: str) -> dict:
                 args=['--no-sandbox', '--disable-gpu', '--log-level=3', '--mute-audio'],
             )
             ctx = browser.new_context(
-                user_agent='Mozilla/5.0 (compatible; TwilightOrbit/1.0)',
+                user_agent='Mozilla/5.0 (compatible; Gravehound/1.0)',
                 ignore_https_errors=True,
             )
             page = ctx.new_page()
             page.set_default_timeout(15000)
-
             loaded = False
             for proto in ('https', 'http'):
                 try:
@@ -77,19 +71,16 @@ def run(target: str) -> dict:
                         continue
                 except Exception:
                     continue
-
             if not loaded:
                 results['errors'].append('Failed to load page in headless browser — target may be blocking bots')
                 browser.close()
                 return results
-
             for tech_name, js in JS_PROBES:
                 try:
                     if page.evaluate(js):
                         results['frameworks'].append(tech_name)
                 except Exception:
                     pass
-
             for tech_name, js in JS_VERSIONS.items():
                 if tech_name in results['frameworks']:
                     try:
@@ -98,7 +89,6 @@ def run(target: str) -> dict:
                             results['versions'][tech_name] = str(ver)
                     except Exception:
                         pass
-
             for key, js in JS_META.items():
                 try:
                     val = page.evaluate(js)
@@ -106,17 +96,12 @@ def run(target: str) -> dict:
                         results['meta'][key] = val
                 except Exception:
                     pass
-
             if results['meta'].get('generator'):
                 results['findings'].append(f'Generator meta tag: {results["meta"]["generator"]} — reveals CMS/platform')
-
             if not results['meta'].get('csrf_meta'):
                 if any(f in results['frameworks'] for f in ('React', 'Vue.js', 'Angular', 'jQuery')):
                     results['findings'].append('No CSRF meta token found in DOM — verify CSRF protection on forms')
-
             browser.close()
-
     except Exception as e:
         results['errors'].append(f'Playwright error: {type(e).__name__}: {str(e)}')
-
     return results

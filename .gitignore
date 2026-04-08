@@ -12,7 +12,8 @@ env/
 venv/
 *.log
 *.html
-!twilight_orbit/reporting/template.html
+!gravehound/reporting/template.html
+*.json
 .idea/
 .vscode/
 *.swp

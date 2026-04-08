@@ -2,13 +2,11 @@ import os
 import re
 import httpx
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from twilight_orbit.config import DEFAULT_DNS_TIMEOUT, DEFAULT_TIMEOUT, CRT_SH_URL, SECURITYTRAILS_API_URL
-
+from gravehound.config import DEFAULT_DNS_TIMEOUT, DEFAULT_TIMEOUT, CRT_SH_URL, SECURITYTRAILS_API_URL
 import dns.resolver
 import dns.exception
 
-_UA = 'Mozilla/5.0 (compatible; TwilightOrbit/1.0)'
-
+_UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
 DEFAULT_SUBDOMAINS = [
     'www', 'mail', 'ftp', 'webmail', 'smtp', 'pop', 'ns1', 'ns2', 'dns', 'dns1', 'dns2',
     'mx', 'mx1', 'mx2', 'ntp', 'imap', 'pop3', 'admin', 'administrator', 'api', 'app',
@@ -25,13 +23,11 @@ DEFAULT_SUBDOMAINS = [
     'sharepoint', 'confluence', 'sonar', 'grafana', 'kibana', 'prometheus', 'vault',
     'consul', 'k8s', 'kube', 'rancher', 'argocd', 'harbor',
 ]
-
 _TAKEOVER_CNAMES = [
     'amazonaws.com', 'github.io', 'heroku.com', 'azurewebsites.net', 'cloudapp.azure.com',
     'shopify.com', 'fastly.net', 'pantheon.io', 'surge.sh', 'netlify.app', 'fly.dev',
     'vercel.app', 'render.com', 'readthedocs.io', 'smugmug.com', 'tumblr.com',
 ]
-
 
 def _build_resolver() -> dns.resolver.Resolver:
     r = dns.resolver.Resolver(configure=False)
@@ -39,7 +35,6 @@ def _build_resolver() -> dns.resolver.Resolver:
     r.timeout = DEFAULT_DNS_TIMEOUT
     r.lifetime = DEFAULT_DNS_TIMEOUT * 2
     return r
-
 
 def _resolve_subdomain(subdomain: str, target: str) -> dict | None:
     fqdn = f'{subdomain}.{target}'
@@ -59,7 +54,6 @@ def _resolve_subdomain(subdomain: str, target: str) -> dict | None:
     except Exception:
         return None
 
-
 def _check_takeover(fqdn: str, cname: str | None) -> str | None:
     if not cname:
         return None
@@ -68,7 +62,6 @@ def _check_takeover(fqdn: str, cname: str | None) -> str | None:
         if pattern in cname_lower:
             return f'{fqdn} → CNAME {cname} (possible subdomain takeover: {pattern})'
     return None
-
 
 def _query_crt_sh(target: str) -> list[str]:
     subdomains: set[str] = set()
@@ -88,13 +81,11 @@ def _query_crt_sh(target: str) -> list[str]:
         pass
     return list(subdomains)
 
-
 def _load_wordlist(wordlist_path: str | None) -> list[str]:
     if wordlist_path and os.path.exists(wordlist_path):
         with open(wordlist_path, 'r', encoding='utf-8', errors='ignore') as f:
             return [line.strip() for line in f if line.strip() and not line.startswith('#')]
     return DEFAULT_SUBDOMAINS
-
 
 def run(target: str, wordlist: str | None = None, threads: int = 30) -> dict:
     results = {
@@ -108,10 +99,8 @@ def run(target: str, wordlist: str | None = None, threads: int = 30) -> dict:
         'findings': [],
         'errors': [],
     }
-
     discovered: dict[str, dict] = {}
     wordlist_items = _load_wordlist(wordlist)
-
     try:
         with ThreadPoolExecutor(max_workers=threads) as executor:
             futures = {
@@ -130,7 +119,6 @@ def run(target: str, wordlist: str | None = None, threads: int = 30) -> dict:
                     pass
     except Exception as e:
         results['errors'].append(f'Brute-force error: {type(e).__name__}: {str(e)}')
-
     try:
         crt_results = _query_crt_sh(target)
         for sub in crt_results:
@@ -151,7 +139,6 @@ def run(target: str, wordlist: str | None = None, threads: int = 30) -> dict:
                 results['sources']['crt_sh'].append(sub)
     except Exception as e:
         results['errors'].append(f'crt.sh error: {type(e).__name__}: {str(e)}')
-
     st_key = os.getenv('SECURITYTRAILS_API_KEY')
     if st_key:
         try:
@@ -173,22 +160,18 @@ def run(target: str, wordlist: str | None = None, threads: int = 30) -> dict:
                     results['errors'].append('SecurityTrails API key invalid or unauthorized')
         except Exception as e:
             results['errors'].append(f'SecurityTrails error: {type(e).__name__}: {str(e)}')
-
     for fqdn, info in discovered.items():
         cname = info.get('cname')
         takeover = _check_takeover(fqdn, cname)
         if takeover:
             results['takeover_candidates'].append(takeover)
             results['findings'].append(f'SUBDOMAIN TAKEOVER CANDIDATE: {takeover}')
-
     results['subdomains'] = sorted(discovered.keys())
     results['resolved'] = [
         v for v in discovered.values()
         if v.get('ips')
     ]
     results['total'] = len(discovered)
-
     if results['takeover_candidates']:
         results['findings'].insert(0, f'{len(results["takeover_candidates"])} potential subdomain takeover(s) found')
-
     return results

@@ -1,9 +1,10 @@
 from dotenv import load_dotenv
 load_dotenv()
-APP_NAME = 'Twilight Orbit'
+
+APP_NAME = 'Gravehound'
 APP_VERSION = '1.0.0'
 APP_DESCRIPTION = 'Automated OSINT Recon Tool'
-APP_URL = 'https://github.com/WIzbisy/twilight-orbit'
+APP_URL = 'https://github.com/WIzbisy/gravehound'
 DEFAULT_TIMEOUT = 10
 DEFAULT_PORT_TIMEOUT = 1.5
 DEFAULT_THREADS = 50
@@ -12,8 +13,8 @@ TOP_PORTS = [20, 21, 22, 23, 25, 26, 53, 80, 81, 110, 111, 113, 119, 135, 139, 1
 PORT_SERVICES = {20: 'FTP Data', 21: 'FTP', 22: 'SSH', 23: 'Telnet', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 110: 'POP3', 111: 'RPCBind', 119: 'NNTP', 135: 'MSRPC', 139: 'NetBIOS', 143: 'IMAP', 161: 'SNMP', 179: 'BGP', 389: 'LDAP', 443: 'HTTPS', 445: 'SMB', 465: 'SMTPS', 514: 'Syslog', 587: 'SMTP (Submission)', 631: 'IPP', 636: 'LDAPS', 993: 'IMAPS', 995: 'POP3S', 1080: 'SOCKS', 1194: 'OpenVPN', 1433: 'MSSQL', 1434: 'MSSQL UDP', 1521: 'Oracle DB', 1723: 'PPTP', 1883: 'MQTT', 2049: 'NFS', 2082: 'cPanel', 2083: 'cPanel SSL', 2222: 'SSH Alt', 3000: 'Dev Server', 3306: 'MySQL', 3389: 'RDP', 4443: 'HTTPS Alt', 5000: 'Dev Server', 5432: 'PostgreSQL', 5672: 'RabbitMQ', 5900: 'VNC', 5984: 'CouchDB', 6379: 'Redis', 6667: 'IRC', 7001: 'WebLogic', 8000: 'HTTP Alt', 8008: 'HTTP Alt', 8080: 'HTTP Proxy', 8081: 'HTTP Alt', 8443: 'HTTPS Alt', 8888: 'HTTP Alt', 9000: 'PHP-FPM', 9090: 'Web Admin', 9200: 'Elasticsearch', 9418: 'Git', 10000: 'Webmin', 11211: 'Memcached', 25565: 'Minecraft', 27017: 'MongoDB', 50000: 'SAP', 61616: 'ActiveMQ'}
 DNS_RECORD_TYPES = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA']
 SECURITY_HEADERS = {'Strict-Transport-Security': {'description': 'HSTS: Forces HTTPS connections', 'severity': 'HIGH'}, 'Content-Security-Policy': {'description': 'CSP: Prevents XSS and injection attacks', 'severity': 'HIGH'}, 'X-Frame-Options': {'description': 'Prevents clickjacking attacks', 'severity': 'MEDIUM'}, 'X-Content-Type-Options': {'description': 'Prevents MIME-type sniffing', 'severity': 'MEDIUM'}, 'X-XSS-Protection': {'description': 'Legacy XSS filter (deprecated but still checked)', 'severity': 'LOW'}, 'Referrer-Policy': {'description': 'Controls referrer information leakage', 'severity': 'MEDIUM'}, 'Permissions-Policy': {'description': 'Controls browser feature access', 'severity': 'MEDIUM'}, 'X-Permitted-Cross-Domain-Policies': {'description': 'Controls Adobe Flash/PDF cross-domain access', 'severity': 'LOW'}}
-BANNER = '\n  ████████╗██╗    ██╗██╗██╗     ██╗ ██████╗ ██╗  ██╗████████╗\n  ╚══██╔══╝██║    ██║██║██║     ██║██╔════╝ ██║  ██║╚══██╔══╝\n     ██║   ██║ █╗ ██║██║██║     ██║██║  ███╗███████║   ██║   \n     ██║   ██║███╗██║██║██║     ██║██║   ██║██╔══██║   ██║   \n     ██║   ╚███╔███╔╝██║███████╗██║╚██████╔╝██║  ██║   ██║   \n     ╚═╝    ╚══╝╚══╝ ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   \n           ██████╗ ██████╗ ██████╗ ██╗████████╗\n          ██╔═══██╗██╔══██╗██╔══██╗██║╚══██╔══╝\n          ██║   ██║██████╔╝██████╔╝██║   ██║   \n          ██║   ██║██╔══██╗██╔══██╗██║   ██║   \n          ╚██████╔╝██║  ██║██████╔╝██║   ██║   \n           ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝   ╚═╝   \n'
-TAGLINE = "🌑 Automated OSINT Recon Tool: See What's Hidden in the Shadows"
+BANNER = '\n   ██████╗ ██████╗  █████╗ ██╗   ██╗███████╗██╗  ██╗ ██████╗ ██╗   ██╗███╗   ██╗██████╗ \n  ██╔════╝ ██╔══██╗██╔══██╗██║   ██║██╔════╝██║  ██║██╔═══██╗██║   ██║████╗  ██║██╔══██╗\n  ██║  ███╗██████╔╝███████║██║   ██║█████╗  ███████║██║   ██║██║   ██║██╔██╗ ██║██║  ██║\n  ██║   ██║██╔══██╗██╔══██║╚██╗ ██╔╝██╔══╝  ██╔══██║██║   ██║██║   ██║██║╚██╗██║██║  ██║\n  ╚██████╔╝██║  ██║██║  ██║ ╚████╔╝ ███████╗██║  ██║╚██████╔╝╚██████╔╝██║ ╚████║██████╔╝\n   ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚═════╝ \n'
+TAGLINE = '🐾 Digging up buried secrets — Automated OSINT Recon Tool'
 GEO_API_URL = 'http://ip-api.com/json/{ip}?fields=status,message,country,regionName,city,zip,lat,lon,timezone,isp,org,as,query'
 CRT_SH_URL = 'https://crt.sh/?q=%.{domain}&output=json'
 WAYBACK_API_URL = 'https://archive.org/wayback/available?url={target}'

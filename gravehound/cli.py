@@ -1,14 +1,14 @@
 import click
 from rich.console import Console
-from twilight_orbit.config import APP_VERSION
-from twilight_orbit.scanner import run_scan, get_module_list, MODULES, DEFAULT_MODULES
-from twilight_orbit.reporting.console import print_banner, print_scan_header, print_results, print_scan_summary
-from twilight_orbit.reporting.json_report import export as json_export
-from twilight_orbit.reporting.html_report import export as html_export
-console = Console()
+from gravehound.config import APP_VERSION
+from gravehound.scanner import run_scan, get_module_list, MODULES, DEFAULT_MODULES
+from gravehound.reporting.console import print_banner, print_scan_header, print_results, print_scan_summary
+from gravehound.reporting.json_report import export as json_export
+from gravehound.reporting.html_report import export as html_export
 
+console = Console()
 @click.group()
-@click.version_option(version=APP_VERSION, prog_name='twilight-orbit')
+@click.version_option(version=APP_VERSION, prog_name='gravehound')
 def cli():
     pass
 
@@ -18,6 +18,7 @@ def cli():
 @click.option('--output', '-o', default=None, help='Output file path for HTML report (e.g., report.html)')
 @click.option('--json', '-j', 'json_output', is_flag=True, default=False, help='Output results as JSON to stdout')
 @click.option('--json-file', default=None, help='Save JSON results to a file')
+
 def scan(target: str, modules: str | None, output: str | None, json_output: bool, json_file: str | None):
     print_banner()
     if modules:
@@ -45,12 +46,14 @@ def scan(target: str, modules: str | None, output: str | None, json_output: bool
     console.print()
 
 @cli.command(name='modules')
+
 def list_modules():
     print_banner()
     console.print('  [bold bright_green]Available Modules:[/bold bright_green]\n')
     for key, info in MODULES.items():
         console.print(f"  [cyan]{key:<15}[/cyan] {info['description']}")
     console.print(f'\n  [dim]Use --modules flag to select specific modules[/dim]')
-    console.print(f'  [dim]Example: twilight-orbit scan example.com --modules dns,whois,ports[/dim]\n')
+    console.print(f'  [dim]Example: gravehound scan example.com --modules dns,whois,ports[/dim]\n')
+
 if __name__ == '__main__':
     cli()
