@@ -527,7 +527,7 @@ def export(scan_results: dict, output_path: str) -> str:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Gravehound — {_e(target)}</title>
+  <title>Gravehound | {_e(target)}</title>
   <style>{css}</style>
 </head>
 <body>
