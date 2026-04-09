@@ -533,7 +533,7 @@ def export(scan_results: dict, output_path: str) -> str:
 <body>
 <div class="container">
   <div class="header">
-    <div class="logo">🌑 Gravehound</div>
+    <div class="logo">🐾 Gravehound</div>
     <div class="tagline">Automated OSINT Recon Report &mdash; {_e(target)}</div>
   </div>
   <div class="summary">
