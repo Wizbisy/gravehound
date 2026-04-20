@@ -145,6 +145,11 @@ Route all OSINT traffic through the Tor network to hide your origin IP. Autodete
 python -m gravehound scan example.com --tor
 ```
 
+If you are running Tor on a custom port or external machine, pass the proxy URI directly:
+```bash
+python -m gravehound scan example.com --tor-proxy socks5h://[IP_ADDRESS]
+```
+
 ### Generating Beautiful Reports
 Gravehound generates interactive HTML reports that are perfect for delivering to clients or bug bounty programs.
 ```bash

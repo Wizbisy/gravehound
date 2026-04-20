@@ -336,8 +336,7 @@ def _print_web3_recon(data: dict):
         console.print(table)
     evm = wallets.get('evm', [])
     btc = wallets.get('bitcoin', [])
-    sol = wallets.get('solana', [])
-    total_wallets = len(evm) + len(btc) + len(sol)
+    total_wallets = len(evm) + len(btc)
     if total_wallets:
         console.print(f'\n  [bold cyan]💰 {total_wallets} wallet address(es) found[/bold cyan]')
         if evm:
