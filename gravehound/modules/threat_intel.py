@@ -1,5 +1,6 @@
 import socket
 import httpx
+from gravehound import http
 from gravehound.config import (
     OTX_DOMAIN_URL, OTX_IP_URL, THREATFOX_API_URL,
     HACKERTARGET_REVERSE_DNS, HACKERTARGET_PAGE_LINKS,
@@ -161,7 +162,7 @@ def run(target: str) -> dict:
         ip = socket.gethostbyname(target)
     except Exception:
         results['errors'].append(f'Could not resolve {target} to IP')
-    with httpx.Client(timeout=DEFAULT_TIMEOUT, headers={'User-Agent': _UA}) as client:
+    with http.Client(timeout=DEFAULT_TIMEOUT, headers={'User-Agent': _UA}) as client:
         try:
             results['otx'] = _query_otx(target, client)
         except Exception as e:

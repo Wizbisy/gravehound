@@ -1,5 +1,6 @@
 import socket
 import httpx
+from gravehound import http
 from gravehound.config import GEO_API_URL, DEFAULT_TIMEOUT, IPINFO_URL
 
 _UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
@@ -54,7 +55,7 @@ def run(target: str) -> dict:
     except Exception:
         results['all_ips'] = [ip]
     headers = {'User-Agent': _UA}
-    with httpx.Client(timeout=DEFAULT_TIMEOUT, headers=headers) as client:
+    with http.Client(timeout=DEFAULT_TIMEOUT, headers=headers) as client:
         try:
             url = GEO_API_URL.replace('{ip}', ip)
             response = client.get(url)

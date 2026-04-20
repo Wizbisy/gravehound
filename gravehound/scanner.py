@@ -1,7 +1,8 @@
 import time
+import inspect
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
-from gravehound.modules import dns_lookup, whois_lookup, subdomains, port_scanner, http_headers, ssl_info, tech_detect, geo_lookup, email_harvest, wayback, threat_intel, shodan_vt, wayback_secrets, dom_fingerprint, dependency_chain, ghost_assets
+from gravehound.modules import dns_lookup, whois_lookup, subdomains, port_scanner, http_headers, ssl_info, tech_detect, geo_lookup, email_harvest, wayback, threat_intel, shodan_vt, wayback_secrets, dom_fingerprint, dependency_chain, ghost_assets, cloud_storage, js_analyzer, web3_recon, dotfiles, cors_check
 
 console = Console()
 
@@ -16,20 +17,33 @@ MODULES = {
     'geo':              {'name': 'IP Geolocation',         'description': 'Locate server IP address & classify network',                  'function': geo_lookup.run},
     'emails':           {'name': 'Email Harvesting',       'description': 'Discover & classify email addresses',                          'function': email_harvest.run},
     'wayback':          {'name': 'Wayback Machine',        'description': 'Internet Archive historical snapshots',                        'function': wayback.run},
-    'wayback_secrets':  {'name': 'Wayback Secrets',        'description': 'Hunt leaked secrets in historical archives (33 patterns)',     'function': wayback_secrets.run},
+    'wayback_secrets':  {'name': 'Wayback Secrets',        'description': 'Hunt leaked secrets in historical archives (33 patterns)',      'function': wayback_secrets.run},
     'dom_fingerprint':  {'name': 'DOM Fingerprint',        'description': 'Headless browser DOM & framework version analysis',            'function': dom_fingerprint.run},
-    'dependency_chain': {'name': 'Dependency Chain',       'description': 'Frontend library CVE analysis (semver-aware)',                 'function': dependency_chain.run},
-    'threat':           {'name': 'Threat Intelligence',    'description': 'AlienVault OTX, URLScan.io, ThreatFox, HackerTarget APIs',    'function': threat_intel.run},
-    'shodan':           {'name': 'Shodan / VT / AbuseIPDB','description': 'Premium APIs (free keys via env vars)',                       'function': shodan_vt.run},
-    'ghost_assets':     {'name': 'Ghost Assets',           'description': 'Subdomain takeover scanner (31 providers)',                   'function': ghost_assets.run},
+    'dependency_chain': {'name': 'Dependency Chain',       'description': 'Frontend library CVE analysis (semver-aware)',                  'function': dependency_chain.run},
+    'threat':           {'name': 'Threat Intelligence',    'description': 'AlienVault OTX, URLScan.io, ThreatFox, HackerTarget APIs',     'function': threat_intel.run},
+    'shodan':           {'name': 'Shodan / VT / AbuseIPDB','description': 'Premium APIs (free keys via env vars)',                        'function': shodan_vt.run},
+    'ghost_assets':     {'name': 'Ghost Assets',           'description': 'Subdomain takeover scanner (31 providers)',                     'function': ghost_assets.run},
+    'cloud_storage':    {'name': 'Cloud Storage',          'description': 'Open bucket hunter (AWS S3, Azure, GCP, DO, Wasabi, Alibaba)', 'function': cloud_storage.run},
+    'js_analyzer':      {'name': 'JS Analyzer',            'description': 'Hardcoded secrets, hidden endpoints & internal URIs in JS',     'function': js_analyzer.run},
+    'web3_recon':       {'name': 'Web3 Recon',             'description': 'Exposed RPC endpoints, wallet addresses & Web3 keys',           'function': web3_recon.run},
+    'dotfiles':         {'name': 'Dotfiles & Configs',     'description': 'Exposed .git, .env, configs & database dumps (55 paths)',       'function': dotfiles.run},
+    'cors_check':       {'name': 'CORS Check',             'description': 'CORS misconfiguration scanner (7 test vectors)',                'function': cors_check.run},
 
 }
 DEFAULT_MODULES = [
     'dns', 'whois', 'geo', 'ports', 'headers', 'ssl', 'tech',
     'subdomains', 'emails', 'wayback', 'wayback_secrets',
     'dom_fingerprint', 'dependency_chain', 'threat', 'shodan',
-    'ghost_assets',
+    'ghost_assets', 'cloud_storage', 'js_analyzer', 'web3_recon',
+    'dotfiles', 'cors_check',
 ]
+
+def _supports_context(func) -> bool:
+    try:
+        sig = inspect.signature(func)
+        return 'context' in sig.parameters
+    except (ValueError, TypeError):
+        return False
 
 def get_module_list() -> list[str]:
     return list(MODULES.keys())
@@ -52,7 +66,10 @@ def run_scan(target: str, modules: list[str] | None=None) -> dict:
             mod_info = MODULES[mod_key]
             progress.update(task, description=f"  ⟐ {mod_info['name']}...")
             try:
-                result = mod_info['function'](target)
+                if _supports_context(mod_info['function']):
+                    result = mod_info['function'](target, context=scan_results)
+                else:
+                    result = mod_info['function'](target)
                 scan_results['results'][mod_key] = result
                 scan_results['modules_run'].append(mod_key)
                 scan_results['successful_modules'] += 1

@@ -1,6 +1,7 @@
 import re
 import os
 import httpx
+from gravehound import http
 from gravehound.config import DEFAULT_TIMEOUT, HUNTER_API_URL
 
 _UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
@@ -38,8 +39,7 @@ def _classify_email(email: str) -> str:
 
 def _scrape_website(target: str) -> set[str]:
     found: set[str] = set()
-    with httpx.Client(
-        timeout=DEFAULT_TIMEOUT,
+    with http.Client(timeout=DEFAULT_TIMEOUT,
         follow_redirects=True,
         verify=False,
         headers={'User-Agent': _UA},
@@ -78,7 +78,7 @@ def run(target: str) -> dict:
     if hunter_key:
         try:
             url = HUNTER_API_URL.replace('{target}', target).replace('{api_key}', hunter_key)
-            with httpx.Client(timeout=10, verify=False, headers={'User-Agent': _UA}) as client:
+            with http.Client(timeout=10, verify=False, headers={'User-Agent': _UA}) as client:
                 res = client.get(url)
                 if res.status_code == 200:
                     data = res.json()

@@ -1,4 +1,5 @@
 import httpx
+from gravehound import http
 import dns.resolver
 import dns.exception
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -56,7 +57,7 @@ def _get_crt_sh_subs(target: str) -> set[str]:
     subs: set[str] = set()
     try:
         url = f'https://crt.sh/?q=%.{target}&output=json'
-        with httpx.Client(timeout=15, verify=False, headers={'User-Agent': _UA}) as client:
+        with http.Client(timeout=15, verify=False, headers={'User-Agent': _UA}) as client:
             res = client.get(url)
             if res.status_code == 200:
                 for entry in res.json():
@@ -93,8 +94,7 @@ def _check_subdomain(subdomain: str) -> dict | None:
             fingerprints = data['fingerprints']
             for proto in ('https', 'http'):
                 try:
-                    with httpx.Client(
-                        timeout=8,
+                    with http.Client(timeout=8,
                         verify=False,
                         follow_redirects=True,
                         headers={'User-Agent': _UA},

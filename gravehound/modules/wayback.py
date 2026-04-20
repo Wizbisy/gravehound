@@ -1,5 +1,6 @@
 import time
 import httpx
+from gravehound import http
 from gravehound.config import WAYBACK_API_URL, DEFAULT_TIMEOUT
 
 _UA = 'Mozilla/5.0 (compatible; Gravehound/1.0; +https://github.com/WIzbisy/gravehound)'
@@ -41,7 +42,7 @@ def run(target: str) -> dict:
         'errors': [],
     }
     headers = {'User-Agent': _UA}
-    with httpx.Client(timeout=DEFAULT_TIMEOUT, headers=headers) as client:
+    with http.Client(timeout=DEFAULT_TIMEOUT, headers=headers) as client:
         try:
             url = WAYBACK_API_URL.replace('{target}', target)
             resp = _safe_get(client, url)

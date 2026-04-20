@@ -37,7 +37,7 @@ Powered by **real free APIs**: AlienVault OTX, URLScan.io, Internet Archive, Thr
 
 ## Features
 
-Gravehound runs 16 parallel modules to extract every drop of public intelligence on a target.
+Gravehound runs **21 parallel modules** to extract every drop of public intelligence on a target.
 
 | Module | Description | Data Sources / Libraries |
 |--------|------------|-------------------------|
@@ -57,6 +57,13 @@ Gravehound runs 16 parallel modules to extract every drop of public intelligence
 |  **Threat Intel** | Cross-references the domain against global threat intelligence feeds. | AlienVault OTX, URLScan.io, ThreatFox, HackerTarget |
 |  **Shodan / VT** | Queries the biggest cybersecurity databases for vulnerabilities and malware reputation. | Shodan, VirusTotal, AbuseIPDB |
 |  **Ghost Assets** | Detects dangling DNS records and subdomain takeover vulnerabilities across 31 providers. | `httpx`, DNS resolution |
+|  **Cloud Storage** | Hunts for open/misconfigured cloud buckets across 6 managed providers (AWS S3, Azure Blob, GCP, DO Spaces, Wasabi, Alibaba OSS) and probes for self-hosted storage (MinIO, Ceph RGW, OpenStack Swift, SeaweedFS, Garage) via port scanning and server header fingerprinting. | `httpx`, `tldextract` |
+|  **JS Analyzer** | Fetches and deep-scans JavaScript bundles for 26 hardcoded secret patterns (AWS, Stripe, GitHub, Google, Paystack, Flutterwave, etc.), hidden admin/API endpoints, and internal RFC 1918 URIs. | `httpx`, regex |
+|  **Web3 Recon** | Probes for exposed JSON-RPC endpoints, extracts wallet addresses (EVM, Solana, Bitcoin) with entropy filtering, detects Web3 SDKs, and catches leaked Infura/Alchemy/Moralis keys. | `httpx`, regex |
+|  **Dotfiles** | Scans 56+ common misconfiguration paths across 15 categories (`.git`, `.env`, Docker, Spring Boot Actuator, SQL dumps, AWS creds, etc.) with fingerprint validation to eliminate false positives. | `httpx` |
+|  **CORS Check** | Tests 7 CORS attack vectors (reflected origin, null origin, subdomain trust, prefix/postfix bypass, HTTP downgrade, backtick bypass) on both `GET` and `OPTIONS` preflight requests. | `httpx` |
+
+> **Cross-module intelligence**: The scanner architecture supports context passing — later modules like Dotfiles, CORS Check, and JS Analyzer automatically consume subdomain data from earlier modules to expand their attack surface.
 
 ---
 
@@ -87,6 +94,13 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Privacy
+**OPSEC Warning for Security Researchers:** Running Gravehound from your personal IP address will leave a massive footprint in target access logs and can quickly get you rate-limited or blocked by platforms like GitHub, Shodan, or cloud providers. 
+
+To anonymize your scans and protect your identity, Gravehound features native Tor integration. Simply ensure the Tor background daemon (port `9050`) or the Tor Browser (port `9150`) is running locally, then construct your commands with the `--tor` flag. The tool will automatically hook the environment to route all OSINT modules through the proxy and cryptographically verify your IP is concealed before firing any probes.
+
+> **Note on Performance:** The Tor network relies on multi-hop onion routing, which is inherently slow. Running highly concurrent modules (like `subdomains` or `js_analyzer`) over Tor will take significantly longer than a standard scan. Gravehound handles connection instability natively by implementing exponential backoff retries for dropped circuits, but you should still expect scans to take minutes rather than seconds.
+
 ---
 
 ## Usage Examples
@@ -94,7 +108,7 @@ pip install -r requirements.txt
 Gravehound is built on top of `click` for a clean, intuitive command-line interface.
 
 ### Running a Full Scan
-Run all 16 modules against a target domain.
+Run all 21 modules against a target domain.
 ```bash
 python -m gravehound scan example.com
 ```
@@ -105,11 +119,26 @@ Only care about subdomains and open ports? Use the `--modules` (or `-m`) flag.
 python -m gravehound scan example.com -m subdomains,ports,dns
 ```
 
+### Security Focused Scans
+Run only the vulnerability detection modules.
+```bash
+python -m gravehound scan example.com -m cloud_storage,js_analyzer,web3_recon,dotfiles,cors_check
+```
+
+### Anonymized Scans (Tor)
+Route all OSINT traffic through the Tor network to hide your origin IP. Autodetects the Tor daemon (9050) or Tor Browser (9150).
+```bash
+python -m gravehound scan example.com --tor
+```
+
 ### Generating Beautiful Reports
 Gravehound generates interactive HTML reports that are perfect for delivering to clients or bug bounty programs.
 ```bash
 # Output results to an HTML file
 python -m gravehound scan example.com --output report.html
+
+# Run an anonymized scan and output to HTML
+python -m gravehound scan example.com --tor --output report.html
 
 # Output results to machine-readable JSON (useful for CI/CD or jq parsing)
 python -m gravehound scan example.com --output results.json
@@ -132,7 +161,6 @@ However, you can turbocharge the modules by providing API keys for premium (but 
 Gravehound uses `python-dotenv` to automatically load keys. Create a `.env` file in the root directory like this:
 
 ```env
-# ─── Threat Intelligence ──────────────────────────────────────────
 # Enhances the port scanner and checks for known CVEs
 SHODAN_API_KEY=your_shodan_key_here
 
@@ -142,7 +170,6 @@ VIRUSTOTAL_API_KEY=your_vt_key_here
 # Checks if the target IP has been reported for malicious activity
 ABUSEIPDB_API_KEY=your_abuseipdb_key_here
 
-# ─── Recon Enhancements ─────────────────────────────────────────
 # Pulls from Hunter's massive database of corporate emails
 HUNTER_API_KEY=your_hunter_key_here
 
@@ -175,7 +202,7 @@ If you want to contribute or build your own modules, here is the architecture:
 gravehound/                      ← repo root
 ├── gravehound/
 │   ├── cli.py               # CLI entry point (Click)
-│   ├── scanner.py           # Orchestrator that runs the modules
+│   ├── scanner.py           # Orchestrator — runs modules with context passing
 │   ├── config.py            # Global configuration & constants
 │   ├── modules/
 │   │   ├── dns_lookup.py    # DNS records module
@@ -193,7 +220,12 @@ gravehound/                      ← repo root
 │   │   ├── dependency_chain.py# Frontend vulnerable libs check
 │   │   ├── threat_intel.py  # AlienVault OTX, URLScan, ThreatFox
 │   │   ├── shodan_vt.py     # Shodan, VirusTotal, AbuseIPDB
-│   │   └── ghost_assets.py  # Subdomain takeover scanner
+│   │   ├── ghost_assets.py  # Subdomain takeover scanner
+│   │   ├── cloud_storage.py # Cloud bucket hunter + self-hosted storage
+│   │   ├── js_analyzer.py   # JavaScript secret & endpoint analysis
+│   │   ├── web3_recon.py    # Web3 RPC, wallet, and key recon
+│   │   ├── dotfiles.py      # Exposed config & dotfile scanner
+│   │   └── cors_check.py    # CORS misconfiguration checker
 │   └── reporting/
 │       ├── console.py       # Terminal rendering logic (Rich)
 │       ├── json_report.py   # JSON export logic

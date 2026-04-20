@@ -1,6 +1,7 @@
 import os
 import re
 import httpx
+from gravehound import http
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from gravehound.config import DEFAULT_DNS_TIMEOUT, DEFAULT_TIMEOUT, CRT_SH_URL, SECURITYTRAILS_API_URL
 import dns.resolver
@@ -67,7 +68,7 @@ def _query_crt_sh(target: str) -> list[str]:
     subdomains: set[str] = set()
     try:
         url = CRT_SH_URL.replace('{domain}', target)
-        with httpx.Client(timeout=15, verify=False, headers={'User-Agent': _UA}) as client:
+        with http.Client(timeout=15, verify=False, headers={'User-Agent': _UA}) as client:
             response = client.get(url)
             if response.status_code == 200:
                 data = response.json()
@@ -143,8 +144,7 @@ def run(target: str, wordlist: str | None = None, threads: int = 30) -> dict:
     if st_key:
         try:
             url = SECURITYTRAILS_API_URL.replace('{target}', target)
-            with httpx.Client(
-                timeout=10,
+            with http.Client(timeout=10,
                 headers={'APIKEY': st_key, 'User-Agent': _UA},
                 verify=False,
             ) as client:

@@ -3,6 +3,7 @@ import math
 import asyncio
 import urllib.parse
 import httpx
+from gravehound import http
 from gravehound.config import DEFAULT_TIMEOUT
 
 _UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
@@ -95,7 +96,7 @@ def _fetch_cdx_urls(target: str) -> list[str]:
             f'&filter=statuscode:200'
             f'&matchType=domain'
         )
-        with httpx.Client(timeout=15, headers={'User-Agent': _UA}) as client:
+        with http.Client(timeout=15, headers={'User-Agent': _UA}) as client:
             resp = client.get(cdx_url)
             if resp.status_code == 200:
                 data = resp.json()
@@ -169,8 +170,7 @@ async def _run_async(target: str) -> tuple[list[str], list[dict]]:
     raw_urls = _fetch_cdx_urls(target)
     urls = sorted(raw_urls, key=_priority)[:MAX_URLS]
     sem = asyncio.Semaphore(_CONCURRENCY)
-    async with httpx.AsyncClient(
-        verify=False,
+    async with http.AsyncClient(verify=False,
         follow_redirects=True,
         headers={'User-Agent': _UA},
         timeout=10,

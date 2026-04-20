@@ -1,5 +1,6 @@
 import re
 import httpx
+from gravehound import http
 from gravehound.config import DEFAULT_TIMEOUT
 
 _UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
@@ -85,8 +86,7 @@ def run(target: str) -> dict:
     html = ''
     for proto in ('https', 'http'):
         try:
-            with httpx.Client(
-                timeout=DEFAULT_TIMEOUT,
+            with http.Client(timeout=DEFAULT_TIMEOUT,
                 verify=False,
                 follow_redirects=True,
                 headers={'User-Agent': _UA},

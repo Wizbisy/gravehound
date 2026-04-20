@@ -443,6 +443,161 @@ def _render_ghost_assets(data: dict) -> str:
         out += '<p class="no-data">✓ No subdomain takeover candidates found.</p>'
     return out
 
+def _render_cloud_storage(data: dict) -> str:
+    out = _render_errors(data) + _render_findings(data)
+    buckets = data.get('buckets_found', [])
+    private = data.get('exists_but_private', [])
+    self_hosted = data.get('self_hosted', [])
+    total = data.get('total_checked', 0)
+    providers = data.get('providers_checked', [])
+    prov_tags = ' '.join(f'<span class="tag">{_e(p)}</span>' for p in providers)
+    out += f'<p style="margin-bottom:.8rem">Checked: {_badge(str(total), "gray")} &nbsp; Providers: {prov_tags}</p>'
+    if buckets:
+        out += f'<div class="alert alert-crit">🪣 <strong>{len(buckets)} OPEN cloud storage bucket(s)</strong> — data exposure risk</div>'
+        rows = []
+        for b in buckets:
+            status_badge = _badge('LISTABLE', 'red') if b.get('listable') else _badge('EXISTS', 'yellow')
+            rows.append([_sev_badge(b.get('severity', '')), _badge(b.get('provider', ''), 'blue'),
+                         f'<code>{_e(b.get("name", ""))}</code>', status_badge,
+                         f'<a href="{_e(b.get("url", ""))}" style="color:#60a5fa;font-size:.8rem" target="_blank">Open ↗</a>'])
+        out += _table(['Severity', 'Provider', 'Bucket Name', 'Status', 'Link'], rows)
+    if self_hosted:
+        out += f'<div class="alert alert-crit" style="border-color:#a855f7;background:#1a0a2e">🖥️ <strong>{len(self_hosted)} self-hosted storage instance(s)</strong> detected</div>'
+        rows = []
+        for sh in self_hosted:
+            desc = sh.get('description', sh.get('path', ''))
+            rows.append([_sev_badge(sh.get('severity', '')), _badge(sh.get('provider', sh.get('service', '')), 'purple'),
+                         f'<code>{_e(sh.get("name", ""))}</code>', _badge(sh.get('status', ''), 'purple'),
+                         f'<span style="color:#94a3b8;font-size:.78rem">{_e(desc[:50])}</span>',
+                         f'<a href="{_e(sh.get("url", ""))}" style="color:#60a5fa;font-size:.8rem" target="_blank">Open ↗</a>'])
+        out += _table(['Severity', 'Service', 'Host', 'Status', 'Detail', 'Link'], rows)
+    if private:
+        out += f'<p style="margin:.8rem 0 .4rem;color:#94a3b8;font-size:.85rem">{len(private)} bucket(s) exist but are private (403)</p>'
+        rows = [[_badge(b.get('provider', ''), 'gray'), f'<code>{_e(b.get("name", ""))}</code>',
+                 _badge('PRIVATE', 'yellow')] for b in private[:15]]
+        out += _table(['Provider', 'Bucket Name', 'Status'], rows)
+    if not buckets and not self_hosted and not private:
+        out += '<p class="no-data">✓ No open or existing cloud storage buckets found.</p>'
+    return out
+
+def _render_js_analyzer(data: dict) -> str:
+    out = _render_errors(data) + _render_findings(data)
+    secrets = data.get('secrets', [])
+    endpoints = data.get('endpoints', [])
+    internal = data.get('internal_uris', [])
+    js_files = data.get('js_files', [])
+    scanned = data.get('js_files_scanned', 0)
+    sev_summary = data.get('severity_summary', {})
+    sev_html = ' &nbsp; '.join(f'{_sev_badge(k)}&thinsp;<span style="color:#6b7280">{v}</span>' for k, v in sev_summary.items()) if sev_summary else ''
+    out += f'<p style="margin-bottom:.8rem">JS files scanned: {_badge(str(scanned), "gray")} &nbsp; {sev_html}</p>'
+    if secrets:
+        out += f'<div class="alert alert-crit">🔑 <strong>{len(secrets)} hardcoded secret(s)</strong> found in JavaScript bundles</div>'
+        rows = []
+        for s in secrets:
+            src = s.get('source', '')
+            src_short = src.split('/')[-1][:40] if '/' in src else src[:40]
+            rows.append([_sev_badge(s.get('severity', '')), _badge(s.get('pattern', ''), 'blue'),
+                         f'<code style="font-size:.8rem">{_e(s.get("value_redacted", ""))}</code>',
+                         f'<span style="color:#6b7280;font-size:.78rem">{_e(src_short)}</span>'])
+        out += _table(['Severity', 'Pattern', 'Redacted Value', 'Source'], rows)
+    if endpoints:
+        out += f'<p style="margin:.8rem 0 .4rem"><strong>🔗 {len(endpoints)} Hidden Endpoint(s)</strong></p>'
+        tags = ' '.join(f'<span class="tag">{_e(ep)}</span>' for ep in endpoints[:30])
+        out += f'<div style="line-height:2.2">{tags}</div>'
+    if internal:
+        out += f'<p style="margin:.8rem 0 .4rem"><strong>🏠 {len(internal)} Internal URI(s)</strong></p>'
+        rows = [[f'<code style="font-size:.82rem">{_e(uri)}</code>'] for uri in internal[:15]]
+        out += _table(['URI'], rows)
+    if not secrets and not endpoints and not internal:
+        out += '<p class="no-data">✓ No secrets or hidden endpoints found in JavaScript.</p>'
+    return out
+
+def _render_web3_recon(data: dict) -> str:
+    out = _render_errors(data) + _render_findings(data)
+    rpc = data.get('exposed_rpc', [])
+    wallets = data.get('wallet_addresses', {})
+    keys = data.get('leaked_keys', [])
+    providers = data.get('web3_providers', [])
+    if providers:
+        tags = ' '.join(f'<span class="tag">{_e(p)}</span>' for p in providers)
+        out += f'<p style="margin-bottom:.8rem">Web3 Stack: {tags}</p>'
+    if rpc:
+        out += f'<div class="alert alert-crit">⚠ <strong>{len(rpc)} exposed JSON-RPC endpoint(s)</strong> — direct blockchain interaction possible</div>'
+        rows = [[f'<code>{_e(r.get("url", ""))}</code>', _badge(r.get('chain_name', ''), 'blue'),
+                 f'<code>{_e(r.get("chain_id", ""))}</code>', _sev_badge(r.get('severity', ''))] for r in rpc]
+        out += _table(['URL', 'Chain', 'Chain ID', 'Severity'], rows)
+    evm = wallets.get('evm', [])
+    btc = wallets.get('bitcoin', [])
+    sol = wallets.get('solana', [])
+    total_wallets = len(evm) + len(btc) + len(sol)
+    if total_wallets:
+        out += f'<p style="margin:.8rem 0 .4rem"><strong>💰 {total_wallets} Wallet Address(es)</strong></p>'
+        wallet_rows = []
+        for addr in evm[:20]:
+            wallet_rows.append([_badge('EVM', 'purple'), f'<code style="font-size:.78rem">{_e(addr)}</code>'])
+        for addr in btc[:10]:
+            wallet_rows.append([_badge('BTC', 'orange'), f'<code style="font-size:.78rem">{_e(addr)}</code>'])
+        for addr in sol[:10]:
+            wallet_rows.append([_badge('SOL', 'cyan'), f'<code style="font-size:.78rem">{_e(addr)}</code>'])
+        out += _table(['Network', 'Address'], wallet_rows)
+    if keys:
+        out += f'<p style="margin:.8rem 0 .4rem"><strong>🔑 {len(keys)} Leaked Web3 Key(s)</strong></p>'
+        rows = [[_sev_badge(k.get('severity', '')), _badge(k.get('type', ''), 'blue'),
+                 f'<code>{_e(k.get("value_redacted", ""))}</code>'] for k in keys]
+        out += _table(['Severity', 'Type', 'Value'], rows)
+    if not rpc and not total_wallets and not keys and not providers:
+        out += '<p class="no-data">No Web3 footprint detected.</p>'
+    return out
+
+def _render_dotfiles(data: dict) -> str:
+    out = _render_errors(data) + _render_findings(data)
+    exposed = data.get('exposed', [])
+    total = data.get('total_checked', 0)
+    hosts = data.get('hosts_scanned', [])
+    cat_summary = data.get('category_summary', {})
+    out += f'<p style="margin-bottom:.8rem">Hosts scanned: {_badge(str(len(hosts)), "gray")} &nbsp; Paths checked: {_badge(str(total), "gray")} &nbsp; Exposed: {_badge(str(len(exposed)), "red" if exposed else "green")}</p>'
+    if cat_summary:
+        cats = ' &nbsp; '.join(f'{_badge(k, "blue")}&thinsp;<span style="color:#6b7280">{v}</span>' for k, v in cat_summary.items())
+        out += f'<p style="margin-bottom:.8rem">Categories: {cats}</p>'
+    if exposed:
+        critical = [e for e in exposed if e.get('severity') == 'CRITICAL']
+        if critical:
+            out += f'<div class="alert alert-crit">💀 <strong>{len(critical)} CRITICAL exposed config(s)</strong> — immediate remediation required</div>'
+        rows = []
+        for item in exposed:
+            host = item.get('url', '').split('://')[1].split('/')[0] if '://' in item.get('url', '') else ''
+            rows.append([_sev_badge(item.get('severity', '')), f'<code>{_e(item.get("path", ""))}</code>',
+                         _badge(item.get('category', ''), 'blue'), f'<code>{_e(host)}</code>',
+                         f'<span style="color:#94a3b8;font-size:.78rem">{_e(str(item.get("evidence", ""))[:40])}</span>'])
+        out += _table(['Severity', 'Path', 'Category', 'Host', 'Evidence'], rows)
+    else:
+        out += '<p class="no-data">✓ No exposed configs or dotfiles found.</p>'
+    return out
+
+def _render_cors_check(data: dict) -> str:
+    out = _render_errors(data) + _render_findings(data)
+    vulns = data.get('vulnerabilities', [])
+    total = data.get('total_tested', 0)
+    endpoints = data.get('endpoints_tested', [])
+    out += f'<p style="margin-bottom:.8rem">Endpoints tested: {_badge(str(len(endpoints)), "gray")} &nbsp; Total checks: {_badge(str(total), "gray")} &nbsp; Vulnerabilities: {_badge(str(len(vulns)), "red" if vulns else "green")}</p>'
+    if vulns:
+        crit = sum(1 for v in vulns if v.get('severity') == 'CRITICAL')
+        if crit:
+            out += f'<div class="alert alert-crit">⚠ <strong>{crit} CRITICAL CORS misconfiguration(s)</strong> — account takeover risk</div>'
+        rows = []
+        for v in vulns:
+            creds = _badge('✓ YES', 'red') if v.get('acac') else _badge('✗ No', 'gray')
+            host = v.get('url', '').split('://')[1].split('/')[0] if '://' in v.get('url', '') else ''
+            rows.append([_sev_badge(v.get('severity', '')), _badge(v.get('test_name', ''), 'blue'),
+                         f'<code>{_e(host)}</code>',
+                         f'<code style="font-size:.78rem">{_e(v.get("origin_sent", ""))}</code>',
+                         f'<code style="font-size:.78rem">{_e(v.get("acao_received", ""))}</code>',
+                         creds])
+        out += _table(['Severity', 'Test', 'Host', 'Origin Sent', 'ACAO Received', 'Credentials'], rows)
+    else:
+        out += '<p class="no-data">✓ No CORS misconfigurations detected.</p>'
+    return out
+
 def export(scan_results: dict, output_path: str) -> str:
     target = scan_results.get('target', 'Unknown')
     duration = scan_results.get('duration', 0)
@@ -461,6 +616,15 @@ def export(scan_results: dict, output_path: str) -> str:
                 sev = leak.get('severity', '')
                 if sev in ('CRITICAL', 'HIGH'):
                     all_findings.append(('Wayback Secrets', f'[{sev}] {leak.get("pattern")}: {leak.get("value_redacted")}'))
+            for b in mod_data.get('buckets_found', []):
+                if b.get('listable'):
+                    all_findings.append(('Cloud Storage', f'OPEN BUCKET: {b.get("provider")} — {b.get("name")}'))
+            for s in mod_data.get('secrets', []):
+                if s.get('severity') in ('CRITICAL', 'HIGH'):
+                    all_findings.append(('JS Analyzer', f'[{s.get("severity")}] {s.get("pattern")}: {s.get("value_redacted")}'))
+            for v in mod_data.get('vulnerabilities', []):
+                if v.get('severity') in ('CRITICAL', 'HIGH') and 'test_name' in v:
+                    all_findings.append(('CORS Check', f'[{v.get("severity")}] {v.get("test_name")} on {v.get("url", "")}'))
     findings_banner = ''
     if all_findings:
         items = ''.join(f'<li><span style="color:#6b7280;font-size:.78rem">[{_e(src)}]</span> {_e(f)}</li>' for src, f in all_findings[:30])
@@ -562,6 +726,11 @@ def export(scan_results: dict, output_path: str) -> str:
         ('ghost_assets',    '👻', 'Ghost Assets / Subdomain Takeover', _render_ghost_assets),
         ('threat',          '🚨', 'Threat Intelligence',            _render_threat),
         ('shodan',          '🔎', 'Shodan / VirusTotal / AbuseIPDB',_render_shodan),
+        ('cloud_storage',   '☁️',  'Cloud Storage Buckets',          _render_cloud_storage),
+        ('js_analyzer',     '📜', 'JavaScript Analysis',            _render_js_analyzer),
+        ('web3_recon',      '⛓️',  'Web3 / On-Chain Recon',          _render_web3_recon),
+        ('dotfiles',        '📂', 'Exposed Configs & Dotfiles',     _render_dotfiles),
+        ('cors_check',      '🔀', 'CORS Misconfiguration',          _render_cors_check),
     ]
     for mod_key, icon, title, renderer in MODULE_RENDERERS:
         mod_data = results.get(mod_key)
@@ -584,6 +753,29 @@ def export(scan_results: dict, output_path: str) -> str:
             count = f'{n} TAKEOVER(S)' if n else 'clean'
         elif mod_key == 'dependency_chain':
             count = f'{mod_data.get("vuln_count",0)} vuln(s)'
+        elif mod_key == 'cloud_storage':
+            n = len(mod_data.get('buckets_found', []))
+            sh = len(mod_data.get('self_hosted', []))
+            if n and sh:
+                count = f'{n} OPEN + {sh} self-hosted'
+            elif n:
+                count = f'{n} OPEN'
+            elif sh:
+                count = f'{sh} self-hosted'
+            else:
+                count = 'clean'
+        elif mod_key == 'js_analyzer':
+            n = len(mod_data.get('secrets', []))
+            count = f'{n} secret(s)' if n else 'clean'
+        elif mod_key == 'web3_recon':
+            n = len(mod_data.get('exposed_rpc', []))
+            count = f'{n} RPC' if n else 'clean'
+        elif mod_key == 'dotfiles':
+            n = len(mod_data.get('exposed', []))
+            count = f'{n} exposed' if n else 'clean'
+        elif mod_key == 'cors_check':
+            n = len(mod_data.get('vulnerabilities', []))
+            count = f'{n} vuln(s)' if n else 'clean'
         body += _section(icon, title, content, count)
     body += f'''
   <div class="footer">

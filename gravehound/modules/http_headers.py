@@ -1,4 +1,5 @@
 import httpx
+from gravehound import http
 from gravehound.config import SECURITY_HEADERS, DEFAULT_TIMEOUT
 
 _UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
@@ -71,8 +72,7 @@ def run(target: str) -> dict:
     urls = [f'https://{target}', f'http://{target}']
     for url in urls:
         try:
-            with httpx.Client(
-                timeout=DEFAULT_TIMEOUT,
+            with http.Client(timeout=DEFAULT_TIMEOUT,
                 follow_redirects=True,
                 verify=False,
                 headers=headers,

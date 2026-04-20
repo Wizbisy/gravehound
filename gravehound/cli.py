@@ -5,6 +5,7 @@ from gravehound.scanner import run_scan, get_module_list, MODULES, DEFAULT_MODUL
 from gravehound.reporting.console import print_banner, print_scan_header, print_results, print_scan_summary
 from gravehound.reporting.json_report import export as json_export
 from gravehound.reporting.html_report import export as html_export
+from gravehound import tor
 
 console = Console()
 @click.group()
@@ -18,9 +19,22 @@ def cli():
 @click.option('--output', '-o', default=None, help='Output file path for HTML report (e.g., report.html)')
 @click.option('--json', '-j', 'json_output', is_flag=True, default=False, help='Output results as JSON to stdout')
 @click.option('--json-file', default=None, help='Save JSON results to a file')
-
-def scan(target: str, modules: str | None, output: str | None, json_output: bool, json_file: str | None):
+@click.option('--tor', 'use_tor', is_flag=True, default=False, help='Route all HTTP traffic through Tor (auto-detects 9050/9150)')
+@click.option('--tor-proxy', default=None, help='Custom Tor SOCKS5 proxy URL (e.g. socks5://127.0.0.1:9050)')
+def scan(target: str, modules: str | None, output: str | None, json_output: bool, json_file: str | None, use_tor: bool, tor_proxy: str | None):
     print_banner()
+    if use_tor or tor_proxy:
+        with console.status("[cyan]Configuring Tor proxy...[/cyan]"):
+            try:
+                tor.configure(tor_proxy)
+                info = tor.check_connection()
+                if info.get('connected') and info.get('is_tor'):
+                    console.print(f"  [bright_green]✓ Tor Active[/bright_green] [dim](IP: {info.get('ip', 'hidden')} via {info.get('proxy')})[/dim]\n")
+                else:
+                    console.print(f"  [yellow]⚠ Tor connected but API check reported non-Tor IP[/yellow] [dim]({info.get('error', 'check failed')})[/dim]\n")
+            except Exception as e:
+                console.print(f"  [bold red]✗ Tor connection failed:[/bold red] {str(e)}\n")
+                return
     if modules:
         module_list = [m.strip() for m in modules.split(',')]
     else:

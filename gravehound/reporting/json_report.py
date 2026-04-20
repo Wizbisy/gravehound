@@ -4,7 +4,6 @@ from gravehound.config import APP_NAME, APP_VERSION, APP_URL
 _SEVERITY_ORDER = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3, 'INFO': 4}
 
 def _build_findings_index(results: dict) -> list[dict]:
-    """Aggregate all findings / vulnerabilities / leaks into one sorted list."""
     index: list[dict] = []
     for mod_key, data in results.items():
         if not isinstance(data, dict):
@@ -34,14 +33,61 @@ def _build_findings_index(results: dict) -> list[dict]:
             index.append({
                 'severity': t.get('severity', 'HIGH'),
                 'module': module_name,
-                'finding': f'Subdomain takeover: {t.get("subdomain")} → {t.get("service")} (CNAME: {t.get("cname")})',
+                'finding': f'Subdomain takeover: {t.get("subdomain")} \u2192 {t.get("service")} (CNAME: {t.get("cname")})',
                 'fingerprint': t.get('fingerprint_matched'),
             })
         for v in data.get('vulnerabilities', []):
+            if v.get('library'):
+                index.append({
+                    'severity': v.get('severity', 'MEDIUM'),
+                    'module': module_name,
+                    'finding': f'{v.get("library")} v{v.get("version")}: {v.get("description")}',
+                })
+            elif v.get('test_name'):
+                index.append({
+                    'severity': v.get('severity', 'MEDIUM'),
+                    'module': module_name,
+                    'finding': f'CORS {v.get("test_name")}: {v.get("detail", "")}',
+                    'url': v.get('url', ''),
+                    'origin_sent': v.get('origin_sent', ''),
+                    'credentials': v.get('acac', False),
+                })
+        for b in data.get('buckets_found', []):
             index.append({
-                'severity': v.get('severity', 'MEDIUM'),
+                'severity': b.get('severity', 'HIGH'),
                 'module': module_name,
-                'finding': f'{v.get("library")} v{v.get("version")}: {v.get("description")}',
+                'finding': f'Open bucket: {b.get("provider")} \u2014 {b.get("name")}',
+                'url': b.get('url', ''),
+                'listable': b.get('listable', False),
+            })
+        for sh in data.get('self_hosted', []):
+            index.append({
+                'severity': sh.get('severity', 'HIGH'),
+                'module': module_name,
+                'finding': f'Self-hosted storage: {sh.get("service", sh.get("provider", ""))} at {sh.get("name", "")}',
+                'url': sh.get('url', ''),
+            })
+        for s in data.get('secrets', []):
+            index.append({
+                'severity': s.get('severity', 'HIGH'),
+                'module': module_name,
+                'finding': f'{s.get("pattern", "Secret")} in JS: {s.get("value_redacted", "")}',
+                'source': s.get('source', ''),
+            })
+        for e in data.get('exposed', []):
+            index.append({
+                'severity': e.get('severity', 'MEDIUM'),
+                'module': module_name,
+                'finding': f'Exposed config: {e.get("path", "")} on {e.get("url", "").split("://")[1].split("/")[0] if "://" in e.get("url", "") else ""}',
+                'category': e.get('category', ''),
+                'url': e.get('url', ''),
+            })
+        for rpc in data.get('exposed_rpc', []):
+            index.append({
+                'severity': rpc.get('severity', 'HIGH'),
+                'module': module_name,
+                'finding': f'Exposed RPC: {rpc.get("chain_name", "")} at {rpc.get("url", "")}',
+                'chain_id': rpc.get('chain_id', ''),
             })
     index.sort(key=lambda x: _SEVERITY_ORDER.get(x.get('severity', 'INFO'), 99))
     return index
@@ -141,6 +187,12 @@ def export(scan_results: dict, output_path: str | None = None) -> str:
             'secrets_found': len(results.get('wayback_secrets', {}).get('leaks_found', [])),
             'takeovers_confirmed': len(results.get('ghost_assets', {}).get('takeovers', [])),
             'vulnerable_dependencies': results.get('dependency_chain', {}).get('vuln_count', 0),
+            'open_buckets': len(results.get('cloud_storage', {}).get('buckets_found', [])),
+            'self_hosted_storage': len(results.get('cloud_storage', {}).get('self_hosted', [])),
+            'js_secrets': len(results.get('js_analyzer', {}).get('secrets', [])),
+            'exposed_configs': len(results.get('dotfiles', {}).get('exposed', [])),
+            'cors_vulns': len(results.get('cors_check', {}).get('vulnerabilities', [])),
+            'exposed_rpc': len(results.get('web3_recon', {}).get('exposed_rpc', [])),
         },
         'findings': findings_index,
         'assets': _build_assets(results),

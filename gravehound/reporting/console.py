@@ -247,11 +247,166 @@ def print_email_results(data: dict):
         for p in patterns:
             console.print(f'  [dim]  • {p}[/dim]')
 
-PRINTERS = {'dns': print_dns_results, 'whois': print_whois_results, 'subdomains': print_subdomain_results, 'ports': print_port_results, 'headers': print_headers_results, 'ssl': print_ssl_results, 'tech': print_tech_results, 'geo': print_geo_results, 'emails': print_email_results, 'wayback': lambda data: _print_wayback(data), 'threat': lambda data: _print_threat(data), 'shodan': lambda data: _print_shodan(data)}
+def _print_cloud_storage(data: dict):
+    if data.get('errors'):
+        for err in data['errors']:
+            console.print(f'  [red]✗ {err}[/red]')
+    total = data.get('total_checked', 0)
+    buckets = data.get('buckets_found', [])
+    private = data.get('exists_but_private', [])
+    self_hosted = data.get('self_hosted', [])
+    providers = data.get('providers_checked', [])
+    console.print(f'  [dim]Providers: {", ".join(providers)} | Checked: {total}[/dim]')
+    if buckets:
+        console.print(f'\n  [bold red]⚠ {len(buckets)} OPEN bucket(s) found![/bold red]')
+        table = Table(title='Open Buckets', box=box.ROUNDED, border_style='red', title_style='bold red')
+        table.add_column('Provider', style='bold yellow', width=20)
+        table.add_column('Name', style='bold cyan')
+        table.add_column('Status', width=10)
+        table.add_column('URL', style='dim', max_width=60)
+        for b in buckets:
+            status_str = '[red]OPEN[/red]' if b.get('listable') else '[yellow]EXISTS[/yellow]'
+            table.add_row(b.get('provider', ''), b.get('name', ''), status_str, b.get('url', ''))
+        console.print(table)
+    if self_hosted:
+        console.print(f'\n  [bold magenta]🖥️  {len(self_hosted)} self-hosted storage instance(s) detected[/bold magenta]')
+        table = Table(title='Self-Hosted Storage', box=box.ROUNDED, border_style='magenta', title_style='bold magenta')
+        table.add_column('Service', style='bold yellow', width=20)
+        table.add_column('Host', style='bold cyan')
+        table.add_column('Status', width=14)
+        table.add_column('URL', style='dim', max_width=55)
+        for sh in self_hosted:
+            sev = sh.get('severity', '')
+            sev_style = {'CRITICAL': 'red', 'HIGH': 'yellow'}.get(sev, 'white')
+            table.add_row(sh.get('provider', sh.get('service', '')), sh.get('name', ''), f'[{sev_style}]{sh.get("status", "")}[/{sev_style}]', sh.get('url', ''))
+        console.print(table)
+    if not buckets and not self_hosted:
+        console.print('  [green]✓ No open buckets or self-hosted storage found[/green]')
+    if private:
+        console.print(f'\n  [dim]{len(private)} bucket(s) exist but are private (403)[/dim]')
+
+def _print_js_analyzer(data: dict):
+    if data.get('errors'):
+        for err in data['errors']:
+            console.print(f'  [red]✗ {err}[/red]')
+    scanned = data.get('js_files_scanned', 0)
+    secrets = data.get('secrets', [])
+    endpoints = data.get('endpoints', [])
+    internal = data.get('internal_uris', [])
+    console.print(f'  [dim]JS files scanned: {scanned}[/dim]')
+    if secrets:
+        console.print(f'\n  [bold red]🔑 {len(secrets)} hardcoded secret(s) found[/bold red]')
+        table = Table(title='Secrets in JavaScript', box=box.ROUNDED, border_style='red', title_style='bold red')
+        table.add_column('Severity', width=10)
+        table.add_column('Pattern', style='bold yellow')
+        table.add_column('Value', style='cyan')
+        table.add_column('Source', style='dim', max_width=40)
+        for s in secrets[:20]:
+            sev = s.get('severity', '')
+            sev_style = {'CRITICAL': 'red', 'HIGH': 'yellow', 'MEDIUM': 'blue'}.get(sev, 'white')
+            table.add_row(f'[{sev_style}]{sev}[/{sev_style}]', s.get('pattern', ''), s.get('value_redacted', ''), s.get('source', '')[-40:])
+        console.print(table)
+    if endpoints:
+        console.print(f'\n  [bold cyan]🔗 {len(endpoints)} hidden endpoint(s)[/bold cyan]')
+        for ep in endpoints[:15]:
+            console.print(f'    • {ep}')
+    if internal:
+        console.print(f'\n  [bold yellow]🏠 {len(internal)} internal URI(s)[/bold yellow]')
+        for uri in internal[:10]:
+            console.print(f'    • {uri}')
+    if not secrets and not endpoints and not internal:
+        console.print('  [green]✓ No secrets or hidden endpoints found[/green]')
+
+def _print_web3_recon(data: dict):
+    if data.get('errors'):
+        for err in data['errors']:
+            console.print(f'  [red]✗ {err}[/red]')
+    rpc = data.get('exposed_rpc', [])
+    wallets = data.get('wallet_addresses', {})
+    keys = data.get('leaked_keys', [])
+    providers = data.get('web3_providers', [])
+    if rpc:
+        console.print(f'\n  [bold red]⚠ {len(rpc)} exposed RPC endpoint(s)[/bold red]')
+        table = Table(title='Exposed JSON-RPC', box=box.ROUNDED, border_style='red', title_style='bold red')
+        table.add_column('URL', style='cyan', max_width=50)
+        table.add_column('Chain', style='bold yellow')
+        table.add_column('Chain ID', style='dim')
+        for r in rpc:
+            table.add_row(r.get('url', ''), r.get('chain_name', ''), r.get('chain_id', ''))
+        console.print(table)
+    evm = wallets.get('evm', [])
+    btc = wallets.get('bitcoin', [])
+    sol = wallets.get('solana', [])
+    total_wallets = len(evm) + len(btc) + len(sol)
+    if total_wallets:
+        console.print(f'\n  [bold cyan]💰 {total_wallets} wallet address(es) found[/bold cyan]')
+        if evm:
+            console.print(f'    EVM: {", ".join(evm[:5])}{" ..." if len(evm) > 5 else ""}')
+        if btc:
+            console.print(f'    BTC: {", ".join(btc[:3])}')
+    if keys:
+        console.print(f'\n  [bold yellow]🔑 {len(keys)} Web3 key(s) leaked[/bold yellow]')
+        for k in keys:
+            console.print(f'    • {k["type"]}: {k["value_redacted"]}')
+    if providers:
+        console.print(f'\n  [bold green]⛓️  Web3 stack: {", ".join(providers)}[/bold green]')
+    if not rpc and not total_wallets and not keys and not providers:
+        console.print('  [dim]No Web3 footprint detected[/dim]')
+
+def _print_dotfiles(data: dict):
+    if data.get('errors'):
+        for err in data['errors']:
+            console.print(f'  [red]✗ {err}[/red]')
+    exposed = data.get('exposed', [])
+    total = data.get('total_checked', 0)
+    hosts = data.get('hosts_scanned', [])
+    console.print(f'  [dim]Hosts scanned: {len(hosts)} | Paths checked: {total}[/dim]')
+    if exposed:
+        table = Table(title=f'Exposed Files ({len(exposed)})', box=box.ROUNDED, border_style='red', title_style='bold red')
+        table.add_column('Severity', width=10)
+        table.add_column('Path', style='bold cyan')
+        table.add_column('Category', style='yellow')
+        table.add_column('Evidence', style='dim', max_width=30)
+        table.add_column('URL', style='dim', max_width=40)
+        for item in exposed[:30]:
+            sev = item.get('severity', '')
+            sev_style = {'CRITICAL': 'red', 'HIGH': 'yellow', 'MEDIUM': 'blue', 'LOW': 'dim'}.get(sev, 'white')
+            table.add_row(f'[{sev_style}]{sev}[/{sev_style}]', item.get('path', ''), item.get('category', ''), str(item.get('evidence', ''))[:30], item.get('url', '')[-40:])
+        console.print(table)
+    else:
+        console.print('  [green]✓ No exposed configs or dotfiles found[/green]')
+
+def _print_cors(data: dict):
+    if data.get('errors'):
+        for err in data['errors']:
+            console.print(f'  [red]✗ {err}[/red]')
+    vulns = data.get('vulnerabilities', [])
+    total = data.get('total_tested', 0)
+    endpoints = data.get('endpoints_tested', [])
+    console.print(f'  [dim]Endpoints tested: {len(endpoints)} | Total checks: {total}[/dim]')
+    if vulns:
+        console.print(f'\n  [bold red]⚠ {len(vulns)} CORS misconfiguration(s) found[/bold red]')
+        table = Table(title='CORS Vulnerabilities', box=box.ROUNDED, border_style='red', title_style='bold red')
+        table.add_column('Severity', width=10)
+        table.add_column('Test', style='bold yellow')
+        table.add_column('Origin Sent', style='cyan', max_width=30)
+        table.add_column('ACAO', style='white', max_width=30)
+        table.add_column('Creds', width=6)
+        table.add_column('URL', style='dim', max_width=35)
+        for v in vulns:
+            sev = v.get('severity', '')
+            sev_style = {'CRITICAL': 'red', 'HIGH': 'yellow', 'MEDIUM': 'blue'}.get(sev, 'white')
+            creds = '[red]✓[/red]' if v.get('acac') else '[dim]✗[/dim]'
+            table.add_row(f'[{sev_style}]{sev}[/{sev_style}]', v.get('test_name', ''), v.get('origin_sent', ''), v.get('acao_received', ''), creds, v.get('url', '')[-35:])
+        console.print(table)
+    else:
+        console.print('  [green]✓ No CORS misconfigurations detected[/green]')
+
+PRINTERS = {'dns': print_dns_results, 'whois': print_whois_results, 'subdomains': print_subdomain_results, 'ports': print_port_results, 'headers': print_headers_results, 'ssl': print_ssl_results, 'tech': print_tech_results, 'geo': print_geo_results, 'emails': print_email_results, 'wayback': lambda data: _print_wayback(data), 'threat': lambda data: _print_threat(data), 'shodan': lambda data: _print_shodan(data), 'cloud_storage': lambda data: _print_cloud_storage(data), 'js_analyzer': lambda data: _print_js_analyzer(data), 'web3_recon': lambda data: _print_web3_recon(data), 'dotfiles': lambda data: _print_dotfiles(data), 'cors_check': lambda data: _print_cors(data)}
 
 def print_results(scan_results: dict):
     results = scan_results.get('results', {})
-    module_titles = {'dns': '🔍 DNS Lookup', 'whois': '📋 WHOIS Lookup', 'subdomains': '🌐 Subdomain Discovery', 'ports': '🔓 Port Scanner', 'headers': '🛡️  HTTP Security Headers', 'ssl': '🔒 SSL/TLS Certificate', 'tech': '⚙️  Technology Detection', 'geo': '🌍 IP Geolocation', 'emails': '📧 Email Harvesting', 'wayback': '🕰️  Wayback Machine (archive.org)', 'threat': '🚨 Threat Intelligence (OTX / URLScan / ThreatFox)', 'shodan': '🔎 Shodan / VirusTotal / AbuseIPDB'}
+    module_titles = {'dns': '🔍 DNS Lookup', 'whois': '📋 WHOIS Lookup', 'subdomains': '🌐 Subdomain Discovery', 'ports': '🔓 Port Scanner', 'headers': '🛡️  HTTP Security Headers', 'ssl': '🔒 SSL/TLS Certificate', 'tech': '⚙️  Technology Detection', 'geo': '🌍 IP Geolocation', 'emails': '📧 Email Harvesting', 'wayback': '🕰️  Wayback Machine (archive.org)', 'threat': '🚨 Threat Intelligence (OTX / URLScan / ThreatFox)', 'shodan': '🔎 Shodan / VirusTotal / AbuseIPDB', 'cloud_storage': '☁️  Cloud Storage Buckets', 'js_analyzer': '📜 JavaScript Analysis', 'web3_recon': '⛓️  Web3 / On-Chain Recon', 'dotfiles': '📂 Exposed Configs & Dotfiles', 'cors_check': '🔀 CORS Misconfiguration'}
     for mod_key in scan_results.get('modules_run', []):
         data = results.get(mod_key, {})
         title = module_titles.get(mod_key, mod_key)

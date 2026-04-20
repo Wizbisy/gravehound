@@ -1,6 +1,7 @@
 import os
 import socket
 import httpx
+from gravehound import http
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from gravehound.config import DEFAULT_TIMEOUT
 
@@ -10,7 +11,7 @@ def _query_shodan(ip: str, api_key: str) -> dict:
     data: dict = {'available': True, 'ip': ip}
     try:
         url = f'https://api.shodan.io/shodan/host/{ip}?key={api_key}'
-        with httpx.Client(timeout=DEFAULT_TIMEOUT, headers={'User-Agent': _UA}) as client:
+        with http.Client(timeout=DEFAULT_TIMEOUT, headers={'User-Agent': _UA}) as client:
             resp = client.get(url)
             if resp.status_code == 200:
                 result = resp.json()
@@ -56,7 +57,7 @@ def _query_virustotal(target: str, api_key: str) -> dict:
     data: dict = {'available': True}
     try:
         url = f'https://www.virustotal.com/api/v3/domains/{target}'
-        with httpx.Client(timeout=DEFAULT_TIMEOUT, headers={'x-apikey': api_key, 'User-Agent': _UA}) as client:
+        with http.Client(timeout=DEFAULT_TIMEOUT, headers={'x-apikey': api_key, 'User-Agent': _UA}) as client:
             resp = client.get(url)
             if resp.status_code == 200:
                 result = resp.json()
@@ -104,7 +105,7 @@ def _query_abuseipdb(ip: str, api_key: str) -> dict:
         url = 'https://api.abuseipdb.com/api/v2/check'
         headers = {'Key': api_key, 'Accept': 'application/json', 'User-Agent': _UA}
         params = {'ipAddress': ip, 'maxAgeInDays': 90, 'verbose': True}
-        with httpx.Client(timeout=DEFAULT_TIMEOUT) as client:
+        with http.Client(timeout=DEFAULT_TIMEOUT) as client:
             resp = client.get(url, headers=headers, params=params)
             if resp.status_code == 200:
                 result = resp.json().get('data', {})
