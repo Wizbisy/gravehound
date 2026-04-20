@@ -528,8 +528,7 @@ def _render_web3_recon(data: dict) -> str:
         out += _table(['URL', 'Chain', 'Chain ID', 'Severity'], rows)
     evm = wallets.get('evm', [])
     btc = wallets.get('bitcoin', [])
-    sol = wallets.get('solana', [])
-    total_wallets = len(evm) + len(btc) + len(sol)
+    total_wallets = len(evm) + len(btc)
     if total_wallets:
         out += f'<p style="margin:.8rem 0 .4rem"><strong>💰 {total_wallets} Wallet Address(es)</strong></p>'
         wallet_rows = []
@@ -537,8 +536,6 @@ def _render_web3_recon(data: dict) -> str:
             wallet_rows.append([_badge('EVM', 'purple'), f'<code style="font-size:.78rem">{_e(addr)}</code>'])
         for addr in btc[:10]:
             wallet_rows.append([_badge('BTC', 'orange'), f'<code style="font-size:.78rem">{_e(addr)}</code>'])
-        for addr in sol[:10]:
-            wallet_rows.append([_badge('SOL', 'cyan'), f'<code style="font-size:.78rem">{_e(addr)}</code>'])
         out += _table(['Network', 'Address'], wallet_rows)
     if keys:
         out += f'<p style="margin:.8rem 0 .4rem"><strong>🔑 {len(keys)} Leaked Web3 Key(s)</strong></p>'

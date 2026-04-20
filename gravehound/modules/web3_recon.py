@@ -28,7 +28,6 @@ CHAIN_IDS = {
 }
 
 EVM_ADDR = re.compile(r'0x[a-fA-F0-9]{40}')
-SOLANA_ADDR = re.compile(r'\b[1-9A-HJ-NP-Za-km-z]{32,44}\b')
 BITCOIN_ADDR = re.compile(r'\b(?:[13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{39,59})\b')
 
 WEB3_PROVIDER_SIGS = [
@@ -86,16 +85,10 @@ def _extract_wallets(text: str) -> dict:
     for m in EVM_ADDR.finditer(text):
         addr = m.group(0)
         if addr != '0x' + '0' * 40 and addr != '0x' + 'f' * 40 and len(set(addr[2:])) > 4:
-            evm.add(addr)
-    for m in SOLANA_ADDR.finditer(text):
-        candidate = m.group(0)
-        if _entropy(candidate) > 3.8 and len(candidate) >= 32:
-            solana.add(candidate)
     for m in BITCOIN_ADDR.finditer(text):
         bitcoin.add(m.group(0))
     return {
         'evm': sorted(evm)[:50],
-        'solana': sorted(solana)[:50],
         'bitcoin': sorted(bitcoin)[:20],
     }
 
@@ -131,7 +124,7 @@ def run(target: str, context: dict | None = None) -> dict:
         'module': 'Web3 Recon',
         'target': target,
         'exposed_rpc': [],
-        'wallet_addresses': {'evm': [], 'solana': [], 'bitcoin': []},
+        'wallet_addresses': {'evm': [], 'bitcoin': []},
         'leaked_keys': [],
         'web3_providers': [],
         'findings': [],
@@ -185,7 +178,7 @@ def run(target: str, context: dict | None = None) -> dict:
         results['findings'].append(
             f'{len(results["exposed_rpc"])} exposed JSON-RPC endpoint(s) — allows direct blockchain interaction'
         )
-    total_wallets = len(wallets['evm']) + len(wallets['solana']) + len(wallets['bitcoin'])
+    total_wallets = len(wallets['evm']) + len(wallets['bitcoin'])
     if total_wallets:
         results['findings'].append(f'{total_wallets} wallet address(es) found in frontend code')
     if results['leaked_keys']:

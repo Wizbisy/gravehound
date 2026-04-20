@@ -101,6 +101,20 @@ To anonymize your scans and protect your identity, Gravehound features native To
 
 > **Note on Performance:** The Tor network relies on multi-hop onion routing, which is inherently slow. Running highly concurrent modules (like `subdomains` or `js_analyzer`) over Tor will take significantly longer than a standard scan. Gravehound handles connection instability natively by implementing exponential backoff retries for dropped circuits, but you should still expect scans to take minutes rather than seconds.
 
+### Automatic Identity Rotation
+
+Gravehound can automatically request brand new IPs (circuit rotation) via Tor's Control Port to prevent exit node rate-limiting. To allow this, you must configure your Tor installation to accept local control port requests. 
+
+1. Locate your `torrc` configuration file. 
+   - **Linux daemon:** `/etc/tor/torrc`
+   - **Tor Browser (Windows):** `Tor Browser\Browser\TorBrowser\Data\Tor\torrc`
+   - **Tor Browser (macOS):** `~/Library/Application Support/TorBrowser-Data/Tor/torrc`
+2. Open it in any text editor and add this line to the bottom:
+   ```
+   CookieAuthentication 1
+   ```
+3. Restart your Tor daemon or the Tor Browser. Gravehound will now natively rotate identities on the fly.
+
 ---
 
 ## Usage Examples

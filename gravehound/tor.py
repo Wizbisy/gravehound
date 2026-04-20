@@ -69,8 +69,9 @@ def get_new_identity():
             try:
                 ctrl.authenticate()
             except Exception as e:
-                # Requires CookieAuthentication 1 or hashed password in torrc
-                raise PermissionError(f"Tor Control Port authentication failed (check torrc): {e}")
+                from rich.console import Console
+                Console().print(f"[bold yellow]⚠ Tor Identity Rotation Failed:[/bold yellow] [dim]Control Port authentication error. To enable automated identity rotation, add [bold white]CookieAuthentication 1[/bold white] to your torrc file.[/dim]")
+                return False
             ctrl.signal(Signal.NEWNYM)
             return True
     except Exception:

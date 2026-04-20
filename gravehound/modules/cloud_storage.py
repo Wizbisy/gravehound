@@ -181,6 +181,10 @@ def _check_bucket(name: str, provider_name: str, provider: dict) -> dict | None:
     try:
         with http.Client(timeout=8, verify=False, headers={'User-Agent': _UA}, follow_redirects=False) as client:
             resp = client.get(url)
+            
+            if resp.status_code == 404:
+                return None
+                
             body = resp.text[:2000]
             header_fp = _detect_header_fingerprint(resp)
             if header_fp:
@@ -194,6 +198,7 @@ def _check_bucket(name: str, provider_name: str, provider: dict) -> dict | None:
                     'severity': 'HIGH',
                     'header_fingerprint': header_fp,
                 }
+                
             if resp.status_code == 200:
                 is_listable = any(sig in body for sig in provider['open_signals'])
                 return {
@@ -215,6 +220,7 @@ def _check_bucket(name: str, provider_name: str, provider: dict) -> dict | None:
                     'status_code': 403,
                     'severity': 'LOW',
                 }
+
     except Exception:
         pass
     return None
