@@ -85,6 +85,7 @@ def _extract_wallets(text: str) -> dict:
     for m in EVM_ADDR.finditer(text):
         addr = m.group(0)
         if addr != '0x' + '0' * 40 and addr != '0x' + 'f' * 40 and len(set(addr[2:])) > 4:
+            evm.add(addr)
     for m in BITCOIN_ADDR.finditer(text):
         bitcoin.add(m.group(0))
     return {

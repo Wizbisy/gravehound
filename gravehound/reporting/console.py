@@ -6,6 +6,13 @@ from rich.columns import Columns
 from rich import box
 from gravehound.config import BANNER, TAGLINE, APP_VERSION
 
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 console = Console()
 
 def print_banner():
