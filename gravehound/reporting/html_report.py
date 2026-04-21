@@ -148,23 +148,26 @@ def _render_ports(data: dict) -> str:
             rows.append([f'<strong>{p["port"]}</strong>', _badge('open', 'green'), _e(svc), detected_html, flag_html, banner])
         out += _table(['Port', 'State', 'Service', 'Detected', 'Risk', 'Banner'], rows)
     knock = data.get('port_knocking', {})
-    filtered = knock.get('filtered_high_value', [])
-    unlocked = knock.get('unlocked', [])
-    if filtered:
+    if 'sequences_tried' in knock:
+        filtered = knock.get('filtered_high_value', [])
+        unlocked = knock.get('unlocked', [])
         out += f'<div style="margin-top:1.2rem;padding:1rem 1.2rem;background:#0f172a;border:1px solid #854d0e;border-radius:8px">'
         out += f'<div style="font-weight:700;margin-bottom:.6rem;color:#fbbf24">🚪 Port Knocking Analysis</div>'
         out += f'<p style="font-size:.82rem;color:#6b7280;margin-bottom:.8rem">Sequences tested: {knock.get("sequences_tried", 0)}</p>'
-        rows = []
-        for fp in filtered:
-            rows.append([f'<strong>{fp["port"]}</strong>', _e(fp['service']), _badge('FILTERED', 'yellow')])
-        out += _table(['Port', 'Expected Service', 'State'], rows)
-        if unlocked:
-            out += f'<div class="alert alert-crit" style="margin-top:.8rem">⚠ <strong>PORT KNOCKING CONFIRMED</strong></div>'
-            for u in unlocked:
-                seq = ' → '.join(str(p) for p in u['sequence'])
-                out += f'<p style="color:#f87171;font-weight:600;margin-top:.4rem">🔓 {_e(u["service"])} ({u["port"]}) unlocked with: [{_e(seq)}]</p>'
+        if filtered:
+            rows = []
+            for fp in filtered:
+                rows.append([f'<strong>{fp["port"]}</strong>', _e(fp['service']), _badge('FILTERED', 'yellow')])
+            out += _table(['Port', 'Expected Service', 'State'], rows)
+            if unlocked:
+                out += f'<div class="alert alert-crit" style="margin-top:.8rem">⚠ <strong>PORT KNOCKING CONFIRMED</strong></div>'
+                for u in unlocked:
+                    seq = ' → '.join(str(p) for p in u['sequence'])
+                    out += f'<p style="color:#f87171;font-weight:600;margin-top:.4rem">🔓 {_e(u["service"])} ({u["port"]}) unlocked with: [{_e(seq)}]</p>'
+            else:
+                out += f'<p style="color:#6b7280;font-size:.82rem;margin-top:.6rem;font-style:italic">No default sequences unlocked these ports (custom sequence likely in use)</p>'
         else:
-            out += f'<p style="color:#6b7280;font-size:.82rem;margin-top:.6rem;font-style:italic">No default sequences unlocked these ports (custom sequence likely in use)</p>'
+            out += f'<p style="color:#6b7280;font-size:.82rem;margin-top:.6rem;font-style:italic">No filtered high-value ports found (port knocking not suspected)</p>'
         out += '</div>'
     return out
 

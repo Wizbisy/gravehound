@@ -120,25 +120,28 @@ def print_port_results(data: dict):
             table.add_row(str(port_info['port']), port_info['state'], svc, detected, port_info.get('banner', '')[:80])
         console.print(table)
     knock = data.get('port_knocking', {})
-    filtered = knock.get('filtered_high_value', [])
-    unlocked = knock.get('unlocked', [])
-    if filtered:
+    if 'sequences_tried' in knock:
+        filtered = knock.get('filtered_high_value', [])
+        unlocked = knock.get('unlocked', [])
         console.print(f'\n  [bold yellow]🚪 Port Knocking Analysis[/bold yellow]')
         console.print(f'  [dim]Sequences tested: {knock.get("sequences_tried", 0)}[/dim]')
-        ftable = Table(title='Filtered High-Value Ports', box=box.ROUNDED, border_style='yellow', title_style='bold yellow')
-        ftable.add_column('Port', style='bold cyan', width=8)
-        ftable.add_column('Expected Service', style='yellow', width=16)
-        ftable.add_column('State', width=12)
-        for fp in filtered:
-            ftable.add_row(str(fp['port']), fp['service'], '[yellow]FILTERED[/yellow]')
-        console.print(ftable)
-        if unlocked:
-            console.print(f'\n  [bold red]⚠ PORT KNOCKING CONFIRMED[/bold red]')
-            for u in unlocked:
-                seq = ' → '.join(str(p) for p in u['sequence'])
-                console.print(f'  [red]  🔓 {u["service"]} ({u["port"]}) unlocked with: [{seq}][/red]')
+        if filtered:
+            ftable = Table(title='Filtered High-Value Ports', box=box.ROUNDED, border_style='yellow', title_style='bold yellow')
+            ftable.add_column('Port', style='bold cyan', width=8)
+            ftable.add_column('Expected Service', style='yellow', width=16)
+            ftable.add_column('State', width=12)
+            for fp in filtered:
+                ftable.add_row(str(fp['port']), fp['service'], '[yellow]FILTERED[/yellow]')
+            console.print(ftable)
+            if unlocked:
+                console.print(f'\n  [bold red]⚠ PORT KNOCKING CONFIRMED[/bold red]')
+                for u in unlocked:
+                    seq = ' → '.join(str(p) for p in u['sequence'])
+                    console.print(f'  [red]  🔓 {u["service"]} ({u["port"]}) unlocked with: [{seq}][/red]')
+            else:
+                console.print(f'  [dim]No default sequences unlocked these ports (custom sequence likely in use)[/dim]')
         else:
-            console.print(f'  [dim]No default sequences unlocked these ports (custom sequence likely in use)[/dim]')
+            console.print(f'  [dim]No filtered high-value ports found (port knocking not suspected)[/dim]')
 
 def print_headers_results(data: dict):
     if data.get('errors') and (not data.get('url')):

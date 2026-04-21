@@ -6,3 +6,4 @@ click>=8.1.0
 python-dotenv>=1.0.0
 tldextract>=5.0.0
 stem>=1.8.0
+PySocks>=1.7.1

@@ -7,10 +7,13 @@ _SOCKS_PROXY_BROWSER = f'socks5h://{_TOR_HOST}:9150'
 _active = False
 _proxy_url = None
 _control_port = None
+_global_socks_active = False
 
+
+from urllib.parse import urlparse
 
 def configure(proxy_url: str | None = None, control_port: int | None = None) -> str:
-    global _active, _proxy_url, _control_port
+    global _active, _proxy_url, _control_port, _global_socks_active
     if proxy_url:
         _proxy_url = proxy_url
         _control_port = control_port
@@ -30,6 +33,20 @@ def configure(proxy_url: str | None = None, control_port: int | None = None) -> 
                 'Tor proxy not reachable on 9050 (daemon) or 9150 (browser). '
                 'Start Tor or Tor Browser, or pass a custom proxy with --tor-proxy.'
             )
+
+    try:
+        import socks
+        import socket
+        parsed = urlparse(_proxy_url)
+        proxy_host = parsed.hostname or '127.0.0.1'
+        proxy_port = parsed.port or 9050
+        socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, proxy_host, proxy_port, True) # True for remote DNS
+        socket.socket = socks.socksocket
+        _global_socks_active = True
+    except ImportError:
+        from rich.console import Console
+        Console().print("\n  [bold red]⚠ PySocks not installed.[/bold red] [yellow]The port scanner will bypass Tor and leak your IP! Please run:[/yellow] pip install PySocks\n")
+
     _active = True
     return _proxy_url
 
@@ -37,8 +54,10 @@ def configure(proxy_url: str | None = None, control_port: int | None = None) -> 
 def check_connection() -> dict:
     if not _proxy_url:
         return {'connected': False, 'error': 'Tor not configured'}
+    
+    proxy_kwarg = None if _global_socks_active else _proxy_url
     try:
-        with httpx.Client(proxy=_proxy_url, timeout=10) as client:
+        with httpx.Client(proxy=proxy_kwarg, timeout=10) as client:
             resp = client.get('https://check.torproject.org/api/ip')
             data = resp.json()
             return {
@@ -52,7 +71,7 @@ def check_connection() -> dict:
 
 
 def get_proxy() -> str | None:
-    return _proxy_url if _active else None
+    return _proxy_url if _active and not _global_socks_active else None
 
 
 def is_active() -> bool:
