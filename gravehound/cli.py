@@ -21,7 +21,8 @@ def cli():
 @click.option('--json-file', default=None, help='Save JSON results to a file')
 @click.option('--tor', 'use_tor', is_flag=True, default=False, help='Route all HTTP traffic through Tor (auto-detects 9050/9150)')
 @click.option('--tor-proxy', default=None, help='Custom Tor SOCKS5 proxy URL (e.g. socks5://127.0.0.1:9050)')
-def scan(target: str, modules: str | None, output: str | None, json_output: bool, json_file: str | None, use_tor: bool, tor_proxy: str | None):
+@click.option('--knock', is_flag=True, default=False, help='Enable active port knocking detection (WARNING: active probing, requires explicit permission)')
+def scan(target: str, modules: str | None, output: str | None, json_output: bool, json_file: str | None, use_tor: bool, tor_proxy: str | None, knock: bool):
     print_banner()
     if use_tor or tor_proxy:
         with console.status("[cyan]Configuring Tor proxy...[/cyan]"):
@@ -40,7 +41,8 @@ def scan(target: str, modules: str | None, output: str | None, json_output: bool
     else:
         module_list = DEFAULT_MODULES
     print_scan_header(target, module_list)
-    scan_results = run_scan(target, module_list)
+    scan_options = {'knock': knock}
+    scan_results = run_scan(target, module_list, options=scan_options)
     if not json_output:
         print_results(scan_results)
         print_scan_summary(scan_results)

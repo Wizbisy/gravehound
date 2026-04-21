@@ -130,14 +130,42 @@ def _render_ports(data: dict) -> str:
     high_risk = data.get('high_risk_count', 0)
     out += f'<p style="margin-bottom:.8rem">Scanned: {_badge(str(scanned), "gray")} &nbsp; Open: {_badge(str(len(open_ports)), "blue")} &nbsp; High-risk: {_badge(str(high_risk), "red")}</p>'
     if not open_ports:
-        return out + _no_data('No open ports found')
-    rows = []
-    for p in open_ports:
-        flags = p.get('risk_flags', [])
-        flag_html = ' '.join(_badge(f, 'orange') for f in flags) if flags else _badge('clean', 'green')
-        banner = f'<code style="font-size:.78rem;color:#94a3b8">{_e(p.get("banner", "")[:100])}</code>' if p.get('banner') else ''
-        rows.append([f'<strong>{p["port"]}</strong>', _badge('open', 'green'), _e(p['service']), flag_html, banner])
-    out += _table(['Port', 'State', 'Service', 'Risk', 'Banner'], rows)
+        out += _no_data('No open ports found')
+    else:
+        rows = []
+        for p in open_ports:
+            flags = p.get('risk_flags', [])
+            flag_html = ' '.join(_badge(f, 'orange') for f in flags) if flags else _badge('clean', 'green')
+            banner = f'<code style="font-size:.78rem;color:#94a3b8">{_e(p.get("banner", "")[:100])}</code>' if p.get('banner') else ''
+            detected = p.get('detected_service') or ''
+            svc = p.get('service', '')
+            if detected and detected.upper() != svc.upper().split(' ')[0]:
+                detected_html = f'<span style="color:#f87171;font-weight:700">{_e(detected)}</span>'
+            elif detected:
+                detected_html = f'<span style="color:#a78bfa">{_e(detected)}</span>'
+            else:
+                detected_html = '<span style="color:#475569">—</span>'
+            rows.append([f'<strong>{p["port"]}</strong>', _badge('open', 'green'), _e(svc), detected_html, flag_html, banner])
+        out += _table(['Port', 'State', 'Service', 'Detected', 'Risk', 'Banner'], rows)
+    knock = data.get('port_knocking', {})
+    filtered = knock.get('filtered_high_value', [])
+    unlocked = knock.get('unlocked', [])
+    if filtered:
+        out += f'<div style="margin-top:1.2rem;padding:1rem 1.2rem;background:#0f172a;border:1px solid #854d0e;border-radius:8px">'
+        out += f'<div style="font-weight:700;margin-bottom:.6rem;color:#fbbf24">🚪 Port Knocking Analysis</div>'
+        out += f'<p style="font-size:.82rem;color:#6b7280;margin-bottom:.8rem">Sequences tested: {knock.get("sequences_tried", 0)}</p>'
+        rows = []
+        for fp in filtered:
+            rows.append([f'<strong>{fp["port"]}</strong>', _e(fp['service']), _badge('FILTERED', 'yellow')])
+        out += _table(['Port', 'Expected Service', 'State'], rows)
+        if unlocked:
+            out += f'<div class="alert alert-crit" style="margin-top:.8rem">⚠ <strong>PORT KNOCKING CONFIRMED</strong></div>'
+            for u in unlocked:
+                seq = ' → '.join(str(p) for p in u['sequence'])
+                out += f'<p style="color:#f87171;font-weight:600;margin-top:.4rem">🔓 {_e(u["service"])} ({u["port"]}) unlocked with: [{_e(seq)}]</p>'
+        else:
+            out += f'<p style="color:#6b7280;font-size:.82rem;margin-top:.6rem;font-style:italic">No default sequences unlocked these ports (custom sequence likely in use)</p>'
+        out += '</div>'
     return out
 
 def _render_headers(data: dict) -> str:

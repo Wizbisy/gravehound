@@ -48,8 +48,9 @@ def _supports_context(func) -> bool:
 def get_module_list() -> list[str]:
     return list(MODULES.keys())
 
-def run_scan(target: str, modules: list[str] | None=None) -> dict:
+def run_scan(target: str, modules: list[str] | None=None, options: dict | None=None) -> dict:
     scan_modules = modules or DEFAULT_MODULES
+    options = options or {}
     valid_modules = []
     for mod in scan_modules:
         if mod in MODULES:
@@ -66,7 +67,9 @@ def run_scan(target: str, modules: list[str] | None=None) -> dict:
             mod_info = MODULES[mod_key]
             progress.update(task, description=f"  ⟐ {mod_info['name']}...")
             try:
-                if _supports_context(mod_info['function']):
+                if mod_key == 'ports':
+                    result = mod_info['function'](target, detect_knocking=options.get('knock', False))
+                elif _supports_context(mod_info['function']):
                     result = mod_info['function'](target, context=scan_results)
                 else:
                     result = mod_info['function'](target)

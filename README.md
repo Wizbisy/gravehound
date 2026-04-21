@@ -44,7 +44,7 @@ Gravehound runs **21 parallel modules** to extract every drop of public intellig
 |  **DNS Lookup** | A, AAAA, MX, NS, TXT, CNAME, SOA records. | `dnspython` |
 |  **WHOIS** | Domain registration, registrar, dates, nameservers, status. | `python-whois` |
 |  **Subdomains** | Discovers hidden subdomains via active brute-forcing and passive certificate transparency logs. | `dnspython`, `crt.sh`, SecurityTrails API |
-|  **Port Scanner** | Lightning fast TCP connect scanner for the Top 100 most common vulnerable ports. | `socket` (stdlib) |
+|  **Port Scanner** | TCP connect scanner for Top 100 ports with binary-level service fingerprinting, honeypot detection, and opt-in port knocking detection. | `socket` (stdlib), regex |
 |  **HTTP Headers** | Security header analysis with severity ratings (HSTS, CSP, Clickjacking, MIME-sniffing). | `httpx` |
 |  **SSL/TLS** | Certificate details, issuer, SANs, expiry dates, cipher suites, and protocol versions. | `ssl`, `socket` |
 |  **Tech Detection** | Fingerprints frameworks, CMS, CDNs, and analytics via HTTP response headers. | `httpx` |
@@ -148,6 +148,12 @@ python -m gravehound scan example.com --tor
 If you are running Tor on a custom port or external machine, pass the proxy URI directly:
 ```bash
 python -m gravehound scan example.com --tor-proxy socks5h://[IP_ADDRESS]
+```
+
+### Port Knocking Detection (Active Probing)
+Gravehound can actively probe for hidden services (like SSH or RDP) guarded by port knocking daemons. It tests multiple sequence windows (100ms, 500ms) against filtered high-value ports. Because this involves active firewall probing, it is disabled by default and requires an explicit flag.
+```bash
+python -m gravehound scan example.com -m ports --knock
 ```
 
 ### Generating Beautiful Reports
@@ -265,7 +271,7 @@ We welcome contributions! Please see the `CONTRIBUTING.md` file for guidelines o
 
 > **⚠️ Gravehound is intended for authorized security testing and educational purposes only.**
 >
-> You must only scan targets that you own or have explicit written permission to test (e.g., Bug Bounty programs). Unauthorized scanning of infrastructure may be illegal in your jurisdiction. The authors and maintainers are not responsible for any misuse of this tool.
+> You must only scan targets that you own or have explicit written permission to test (e.g., Bug Bounty programs). Unauthorized scanning of infrastructure may be illegal in your jurisdiction. Note that using the `--knock` flag constitutes active firewall probing and goes beyond standard passive/semi-passive reconnaissance. The authors and maintainers are not responsible for any misuse of this tool.
 
 ## 📄 License
 This project is licensed under the [MIT License](LICENSE).

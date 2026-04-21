@@ -105,15 +105,40 @@ def print_port_results(data: dict):
     console.print(f'  [dim]IP: {ip} | Ports scanned: {scanned}[/dim]')
     if not open_ports:
         console.print('  [yellow]No open ports found[/yellow]')
-        return
-    table = Table(title=f'Open Ports ({len(open_ports)})', box=box.ROUNDED, border_style='red', title_style='bold red')
-    table.add_column('Port', style='bold cyan', width=8)
-    table.add_column('State', style='bold green', width=8)
-    table.add_column('Service', style='yellow', width=20)
-    table.add_column('Banner', style='dim', max_width=50)
-    for port_info in open_ports:
-        table.add_row(str(port_info['port']), port_info['state'], port_info['service'], port_info.get('banner', '')[:80])
-    console.print(table)
+    else:
+        table = Table(title=f'Open Ports ({len(open_ports)})', box=box.ROUNDED, border_style='red', title_style='bold red')
+        table.add_column('Port', style='bold cyan', width=8)
+        table.add_column('State', style='bold green', width=8)
+        table.add_column('Service', style='yellow', width=16)
+        table.add_column('Detected', style='bold magenta', width=16)
+        table.add_column('Banner', style='dim', max_width=45)
+        for port_info in open_ports:
+            detected = port_info.get('detected_service') or ''
+            svc = port_info['service']
+            if detected and detected.upper() != svc.upper().split(' ')[0]:
+                detected = f'[red]{detected}[/red]'
+            table.add_row(str(port_info['port']), port_info['state'], svc, detected, port_info.get('banner', '')[:80])
+        console.print(table)
+    knock = data.get('port_knocking', {})
+    filtered = knock.get('filtered_high_value', [])
+    unlocked = knock.get('unlocked', [])
+    if filtered:
+        console.print(f'\n  [bold yellow]🚪 Port Knocking Analysis[/bold yellow]')
+        console.print(f'  [dim]Sequences tested: {knock.get("sequences_tried", 0)}[/dim]')
+        ftable = Table(title='Filtered High-Value Ports', box=box.ROUNDED, border_style='yellow', title_style='bold yellow')
+        ftable.add_column('Port', style='bold cyan', width=8)
+        ftable.add_column('Expected Service', style='yellow', width=16)
+        ftable.add_column('State', width=12)
+        for fp in filtered:
+            ftable.add_row(str(fp['port']), fp['service'], '[yellow]FILTERED[/yellow]')
+        console.print(ftable)
+        if unlocked:
+            console.print(f'\n  [bold red]⚠ PORT KNOCKING CONFIRMED[/bold red]')
+            for u in unlocked:
+                seq = ' → '.join(str(p) for p in u['sequence'])
+                console.print(f'  [red]  🔓 {u["service"]} ({u["port"]}) unlocked with: [{seq}][/red]')
+        else:
+            console.print(f'  [dim]No default sequences unlocked these ports (custom sequence likely in use)[/dim]')
 
 def print_headers_results(data: dict):
     if data.get('errors') and (not data.get('url')):
