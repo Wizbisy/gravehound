@@ -50,9 +50,16 @@ def run(target: str) -> dict:
                 headless=True,
                 args=['--no-sandbox', '--disable-gpu', '--log-level=3', '--mute-audio'],
             )
+            from gravehound import tor
+            proxy_url = tor.get_proxy()
+            proxy_cfg = None
+            if proxy_url:
+                proxy_cfg = {'server': proxy_url.replace('socks5h://', 'socks5://')}
+            
             ctx = browser.new_context(
                 user_agent='Mozilla/5.0 (compatible; Gravehound/1.0)',
                 ignore_https_errors=True,
+                proxy=proxy_cfg,
             )
             page = ctx.new_page()
             page.set_default_timeout(15000)

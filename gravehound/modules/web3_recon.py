@@ -97,11 +97,11 @@ def _extract_wallets(text: str) -> dict:
 def _extract_web3_keys(text: str) -> list[dict]:
     keys = []
     for m in INFURA_KEY.finditer(text):
-        keys.append({'type': 'Infura Project ID', 'value_redacted': m.group(1)[:8] + '...[REDACTED]', 'severity': 'HIGH'})
+        keys.append({'type': 'Infura Project ID', 'value_redacted': m.group(1), 'severity': 'HIGH'})
     for m in ALCHEMY_KEY.finditer(text):
-        keys.append({'type': 'Alchemy API Key', 'value_redacted': m.group(1)[:8] + '...[REDACTED]', 'severity': 'HIGH'})
+        keys.append({'type': 'Alchemy API Key', 'value_redacted': m.group(1), 'severity': 'HIGH'})
     for m in MORALIS_KEY.finditer(text):
-        keys.append({'type': 'Moralis API Key', 'value_redacted': m.group(1)[:8] + '...[REDACTED]', 'severity': 'MEDIUM'})
+        keys.append({'type': 'Moralis API Key', 'value_redacted': m.group(1), 'severity': 'MEDIUM'})
     seen = set()
     deduped = []
     for k in keys:

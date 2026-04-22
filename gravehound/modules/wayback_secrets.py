@@ -40,10 +40,10 @@ SECRETS_PATTERNS: list[dict] = [
     {'name': 'Azure Connection String',  'pattern': r'DefaultEndpointsProtocol=https;AccountName=[^;]+;AccountKey=[A-Za-z0-9+/=]{88}', 'severity': 'CRITICAL'},
     {'name': 'GCP Service Acct Key',     'pattern': r'"type":\s*"service_account"',                                            'severity': 'CRITICAL'},
     {'name': 'JWT Token',                'pattern': r'eyJ[A-Za-z0-9\-_=]+\.eyJ[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_.+/=]+',       'severity': 'MEDIUM'},
-    {'name': 'RSA / EC Private Key',     'pattern': r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----',                              'severity': 'CRITICAL'},
-    {'name': 'SSH Private Key',          'pattern': r'-----BEGIN OPENSSH PRIVATE KEY-----',                                    'severity': 'CRITICAL'},
-    {'name': 'PGP Private Key',          'pattern': r'-----BEGIN PGP PRIVATE KEY BLOCK-----',                                  'severity': 'CRITICAL'},
-    {'name': 'Basic Auth in URL',        'pattern': r'https?://[^:]+:[^@]+@[^/\s]+',                                           'severity': 'HIGH'},
+    {'name': 'RSA / EC Private Key',     'pattern': r'-----BEGIN [A-Z ]*PRIVATE KEY-----[a-zA-Z0-9+/\s=]+?-----END [A-Z ]*PRIVATE KEY-----',                              'severity': 'CRITICAL'},
+    {'name': 'SSH Private Key',          'pattern': r'-----BEGIN OPENSSH PRIVATE KEY-----[a-zA-Z0-9+/\s=]+?-----END OPENSSH PRIVATE KEY-----',                                    'severity': 'CRITICAL'},
+    {'name': 'PGP Private Key',          'pattern': r'-----BEGIN PGP PRIVATE KEY BLOCK-----[a-zA-Z0-9+/\s=]+?-----END PGP PRIVATE KEY BLOCK-----',                                  'severity': 'CRITICAL'},
+    {'name': 'Basic Auth in URL',        'pattern': r'https?://[a-zA-Z0-9\-._~]+:[a-zA-Z0-9\-._~]+@[a-zA-Z0-9\-._]+',                                           'severity': 'HIGH'},
     {'name': 'Database DSN (Postgres)',  'pattern': r'postgres(?:ql)?://[^:]+:[^@]+@[^\s]+',                                   'severity': 'CRITICAL'},
     {'name': 'Database DSN (MySQL)',     'pattern': r'mysql://[^:]+:[^@]+@[^\s]+',                                             'severity': 'CRITICAL'},
     {'name': 'Database DSN (MongoDB)',   'pattern': r'mongodb(?:\+srv)?://[^:]+:[^@]+@[^\s]+',                                 'severity': 'CRITICAL'},
@@ -68,9 +68,7 @@ def _entropy(s: str) -> float:
     return -sum((f / n) * math.log2(f / n) for f in freq.values())
 
 def _redact(value: str) -> str:
-    if len(value) <= 6:
-        return value[:2] + '***'
-    return value[:8] + '...[REDACTED]'
+    return value
 
 def _parse_archived_date(archive_url: str) -> str:
     try:

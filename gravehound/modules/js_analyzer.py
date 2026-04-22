@@ -25,8 +25,8 @@ SECRETS_PATTERNS = [
     {'name': 'Infura Project ID',        'pattern': r'(?i)infura.{0,20}[=:]\s*["\']?([a-f0-9]{32})["\']?',                     'severity': 'HIGH'},
     {'name': 'Alchemy API Key',          'pattern': r'(?i)alchemy.{0,20}[=:]\s*["\']?([A-Za-z0-9_\-]{32,})["\']?',            'severity': 'HIGH'},
     {'name': 'Mapbox Token',             'pattern': r'pk\.eyJ[0-9a-zA-Z\-_]+\.[0-9a-zA-Z\-_]+',                                'severity': 'MEDIUM'},
-    {'name': 'RSA / EC Private Key',     'pattern': r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----',                               'severity': 'CRITICAL'},
-    {'name': 'Basic Auth in URL',        'pattern': r'https?://[^:]+:[^@]+@[^/\s]+',                                            'severity': 'HIGH'},
+    {'name': 'RSA / EC Private Key',     'pattern': r'-----BEGIN [A-Z ]*PRIVATE KEY-----[a-zA-Z0-9+/\s=]+?-----END [A-Z ]*PRIVATE KEY-----', 'severity': 'CRITICAL'},
+    {'name': 'Basic Auth in URL',        'pattern': r'https?://[a-zA-Z0-9\-._~]+:[a-zA-Z0-9\-._~]+@[a-zA-Z0-9\-._]+',             'severity': 'HIGH'},
     {'name': 'Database DSN (Postgres)',  'pattern': r'postgres(?:ql)?://[^:]+:[^@]+@[^\s]+',                                    'severity': 'CRITICAL'},
     {'name': 'Database DSN (MySQL)',     'pattern': r'mysql://[^:]+:[^@]+@[^\s]+',                                              'severity': 'CRITICAL'},
     {'name': 'Database DSN (MongoDB)',   'pattern': r'mongodb(?:\+srv)?://[^:]+:[^@]+@[^\s]+',                                  'severity': 'CRITICAL'},
@@ -75,9 +75,7 @@ def _entropy(s: str) -> float:
 
 
 def _redact(value: str) -> str:
-    if len(value) <= 6:
-        return value[:2] + '***'
-    return value[:8] + '...[REDACTED]'
+    return value
 
 
 def _extract_js_urls(html: str, base_url: str) -> tuple[list[str], int]:

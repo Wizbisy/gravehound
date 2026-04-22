@@ -4,6 +4,7 @@ import select
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from gravehound.config import TOP_PORTS, PORT_SERVICES, DEFAULT_PORT_TIMEOUT, DEFAULT_THREADS
+from gravehound import tor
 
 _RISKY_PORTS = {21, 23, 69, 135, 139, 445, 512, 513, 514, 3389, 5900, 6379, 9200, 11211, 27017}
 
@@ -88,7 +89,7 @@ def _fingerprint(raw_bytes: bytes) -> str | None:
 
 def _port_state(target_ip: str, port: int, timeout: float) -> str:
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        with tor.create_socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(timeout)
             result = sock.connect_ex((target_ip, port))
             if result == 0:
@@ -107,7 +108,7 @@ def _port_state(target_ip: str, port: int, timeout: float) -> str:
 def _send_knock(target_ip: str, sequence: list[int], delay: float):
     for port in sequence:
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with tor.create_socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.settimeout(0.3)
                 sock.connect_ex((target_ip, port))
         except Exception:
@@ -163,7 +164,7 @@ def _detect_port_knocking(target_ip: str, open_port_nums: set[int], timeout: flo
 
 def _scan_port(target_ip: str, port: int, timeout: float, hostname: str) -> dict | None:
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        with tor.create_socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(timeout)
             result = sock.connect_ex((target_ip, port))
             if result != 0:
