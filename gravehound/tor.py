@@ -1,4 +1,5 @@
 import os
+import socket
 import httpx
 
 _TOR_HOST = os.getenv('TOR_HOST', '127.0.0.1')
@@ -7,9 +8,6 @@ _SOCKS_PROXY_BROWSER = f'socks5h://{_TOR_HOST}:9150'
 _active = False
 _proxy_url = None
 _control_port = None
-
-
-from urllib.parse import urlparse
 
 def configure(proxy_url: str | None = None, control_port: int | None = None) -> str:
     global _active, _proxy_url, _control_port
@@ -84,6 +82,59 @@ def create_socket(family=None, type=None, proto=-1, fileno=None):
 
 def is_active() -> bool:
     return _active
+
+
+def resolve(hostname: str) -> str:
+    if _active and _proxy_url:
+        try:
+            with httpx.Client(proxy=_proxy_url, timeout=10) as client:
+                resp = client.get(
+                    'https://cloudflare-dns.com/dns-query',
+                    params={'name': hostname, 'type': 'A'},
+                    headers={'Accept': 'application/dns-json'},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for ans in data.get('Answer', []):
+                        if ans.get('type') == 1:
+                            return ans['data']
+            raise socket.gaierror(f'No A record found for {hostname} via Tor DoH')
+        except socket.gaierror:
+            raise
+        except Exception as e:
+            raise socket.gaierror(f'Tor DNS resolution failed for {hostname}: {e}')
+    return socket.gethostbyname(hostname)
+
+
+def resolve_all(hostname: str) -> list[str]:
+    if _active and _proxy_url:
+        try:
+            with httpx.Client(proxy=_proxy_url, timeout=10) as client:
+                resp = client.get(
+                    'https://cloudflare-dns.com/dns-query',
+                    params={'name': hostname, 'type': 'A'},
+                    headers={'Accept': 'application/dns-json'},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    ips = [ans['data'] for ans in data.get('Answer', []) if ans.get('type') == 1]
+                    if ips:
+                        return ips
+            return []
+        except Exception:
+            return []
+    try:
+        return list({str(r[4][0]) for r in socket.getaddrinfo(hostname, None)})
+    except Exception:
+        return []
+
+
+def create_connection(address: tuple, timeout: float = 10) -> socket.socket:
+    host, port = address
+    sock = create_socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    sock.connect((host, port))
+    return sock
 
 
 def get_new_identity():

@@ -247,7 +247,7 @@ def run(target: str, ports: list[int] | None = None, threads: int = DEFAULT_THRE
     scan_ports = ports or TOP_PORTS
     results['scanned_count'] = len(scan_ports)
     try:
-        target_ip = socket.gethostbyname(target)
+        target_ip = tor.resolve(target)
         results['ip'] = target_ip
     except socket.gaierror as e:
         results['errors'].append(f'Could not resolve {target}: {str(e)}')

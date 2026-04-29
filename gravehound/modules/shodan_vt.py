@@ -1,7 +1,7 @@
 import os
 import socket
 import httpx
-from gravehound import http
+from gravehound import http, tor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from gravehound.config import DEFAULT_TIMEOUT
 
@@ -171,7 +171,7 @@ def run(target: str) -> dict:
         results['abuseipdb'] = {'available': False, 'note': 'Set ABUSEIPDB_API_KEY in .env for AbuseIPDB data'}
     ip = None
     try:
-        ip = socket.gethostbyname(target)
+        ip = tor.resolve(target)
     except Exception:
         results['errors'].append(f'Could not resolve {target}')
     tasks = {}

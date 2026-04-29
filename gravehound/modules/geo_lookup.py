@@ -1,6 +1,6 @@
 import socket
 import httpx
-from gravehound import http
+from gravehound import http, tor
 from gravehound.config import GEO_API_URL, DEFAULT_TIMEOUT, IPINFO_URL
 
 _UA = 'Mozilla/5.0 (compatible; Gravehound/1.0)'
@@ -42,14 +42,14 @@ def run(target: str) -> dict:
         'errors': [],
     }
     try:
-        ip = socket.gethostbyname(target)
+        ip = tor.resolve(target)
         results['ip'] = ip
     except socket.gaierror as e:
         results['errors'].append(f'Could not resolve {target}: {str(e)}')
         return results
     try:
-        all_ips = list({str(r[4][0]) for r in socket.getaddrinfo(target, None)})
-        results['all_ips'] = sorted(all_ips)
+        all_ips = sorted(tor.resolve_all(target)) or [ip]
+        results['all_ips'] = all_ips
         if len(all_ips) > 1:
             results['findings'].append(f'Target resolves to {len(all_ips)} IPs — possible load balancer or CDN')
     except Exception:

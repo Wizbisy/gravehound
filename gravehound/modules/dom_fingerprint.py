@@ -53,25 +53,38 @@ def run(target: str) -> dict:
             from gravehound import tor
             proxy_url = tor.get_proxy()
             proxy_cfg = None
+            host_header = None
+            nav_target = target
+            
             if proxy_url:
                 proxy_cfg = {'server': proxy_url.replace('socks5h://', 'socks5://')}
+                try:
+                    ip = tor.resolve(target)
+                    nav_target = ip
+                    host_header = {'Host': target}
+                except Exception:
+                    pass
             
-            ctx = browser.new_context(
-                user_agent='Mozilla/5.0 (compatible; Gravehound/1.0)',
-                ignore_https_errors=True,
-                proxy=proxy_cfg,
-            )
+            context_args = {
+                'user_agent': 'Mozilla/5.0 (compatible; Gravehound/1.0)',
+                'ignore_https_errors': True,
+                'proxy': proxy_cfg,
+            }
+            if host_header:
+                context_args['extra_http_headers'] = host_header
+                
+            ctx = browser.new_context(**context_args)
             page = ctx.new_page()
             page.set_default_timeout(15000)
             loaded = False
             for proto in ('https', 'http'):
                 try:
-                    page.goto(f'{proto}://{target}', wait_until='networkidle', timeout=15000)
+                    page.goto(f'{proto}://{nav_target}', wait_until='networkidle', timeout=15000)
                     loaded = True
                     break
                 except PWTimeout:
                     try:
-                        page.goto(f'{proto}://{target}', wait_until='domcontentloaded', timeout=10000)
+                        page.goto(f'{proto}://{nav_target}', wait_until='domcontentloaded', timeout=10000)
                         loaded = True
                         break
                     except Exception:

@@ -4,7 +4,7 @@ from datetime import datetime
 from gravehound.config import APP_VERSION
 
 def _e(s) -> str:
-    """HTML-escape a value."""
+    """HTML escape a value."""
     return html_module.escape(str(s)) if s is not None else ''
 
 def _badge(text: str, colour: str) -> str:

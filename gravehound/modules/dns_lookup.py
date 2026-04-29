@@ -1,5 +1,7 @@
 import dns.resolver
 import dns.exception
+import httpx
+from gravehound import tor
 from gravehound.config import DNS_RECORD_TYPES, DEFAULT_DNS_TIMEOUT
 
 _RESOLVERS = ['1.1.1.1', '8.8.8.8', '8.8.4.4', '1.0.0.1', '9.9.9.9']
@@ -52,6 +54,43 @@ def _flag_interesting(record_type: str, records: list) -> list[str]:
                 findings.append(f'Cloud-hosted nameserver: {rec}')
     return findings
 
+def _resolve_via_tor(target: str, record_type: str) -> list:
+    proxy_url = tor.get_proxy()
+    if not proxy_url:
+        return []
+        
+    try:
+        with httpx.Client(proxy=proxy_url, timeout=DEFAULT_DNS_TIMEOUT) as client:
+            resp = client.get(
+                'https://cloudflare-dns.com/dns-query',
+                params={'name': target, 'type': record_type},
+                headers={'Accept': 'application/dns-json'}
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                answers = data.get('Answer', [])
+                results = []
+                for ans in answers:
+                    val = ans.get('data', '')
+                    if record_type == 'MX':
+                        parts = val.split(' ', 1)
+                        if len(parts) == 2:
+                            results.append({
+                                'priority': int(parts[0]),
+                                'exchange': parts[1].rstrip('.')
+                            })
+                    elif record_type == 'TXT':
+                        if val.startswith('"') and val.endswith('"'):
+                            val = val[1:-1]
+                        results.append(val)
+                    else:
+                        results.append(val.rstrip('.'))
+                return results
+    except Exception:
+        pass
+    return []
+
+
 def run(target: str) -> dict:
     results = {
         'module': 'DNS Lookup',
@@ -61,9 +100,27 @@ def run(target: str) -> dict:
         'record_count': 0,
         'errors': [],
     }
-    resolver = _build_resolver()
+    
+    use_tor = tor.is_active()
+    resolver = None
+    if not use_tor:
+        resolver = _build_resolver()
+        
     domain_exists = True
     for record_type in DNS_RECORD_TYPES:
+        if use_tor:
+            parsed = _resolve_via_tor(target, record_type)
+            if parsed:
+                results['records'][record_type] = {
+                    'values': parsed,
+                    'ttl': None,
+                    'count': len(parsed),
+                }
+                results['record_count'] += len(parsed)
+                interesting = _flag_interesting(record_type, parsed)
+                results['findings'].extend(interesting)
+            continue
+            
         try:
             answers = resolver.resolve(target, record_type)
             ttl = answers.rrset.ttl if answers.rrset else None

@@ -1,6 +1,6 @@
 import socket
 import httpx
-from gravehound import http
+from gravehound import http, tor
 from gravehound.config import (
     OTX_DOMAIN_URL, OTX_IP_URL, THREATFOX_API_URL,
     HACKERTARGET_REVERSE_DNS, HACKERTARGET_PAGE_LINKS,
@@ -159,7 +159,7 @@ def run(target: str) -> dict:
     }
     ip = None
     try:
-        ip = socket.gethostbyname(target)
+        ip = tor.resolve(target)
     except Exception:
         results['errors'].append(f'Could not resolve {target} to IP')
     with http.Client(timeout=DEFAULT_TIMEOUT, headers={'User-Agent': _UA}) as client:

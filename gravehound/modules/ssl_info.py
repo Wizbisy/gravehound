@@ -2,6 +2,7 @@ import ssl
 import socket
 import hashlib
 import datetime
+from gravehound import tor
 from gravehound.config import DEFAULT_TIMEOUT
 
 _WEAK_CIPHERS = ['RC4', 'DES', 'NULL', 'EXPORT', 'MD5', 'ANON']
@@ -95,7 +96,7 @@ def run(target: str, port: int = 443) -> dict:
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     try:
-        with socket.create_connection((target, port), timeout=DEFAULT_TIMEOUT) as raw_sock:
+        with tor.create_connection((target, port), timeout=DEFAULT_TIMEOUT) as raw_sock:
             with ctx.wrap_socket(raw_sock, server_hostname=target) as ssock:
                 cert = ssock.getpeercert(binary_form=False)
                 if cert:
